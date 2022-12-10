@@ -79,13 +79,6 @@ my_parser.add_argument(
     help='Classification performance scoring type. Default: f1-score.'
 )
 
-# GS
-my_parser.add_argument(
-    '--GS', 
-    action='store_true',
-    help='Implements grid seach. Default: False.'
-)
-
 # skip
 my_parser.add_argument(
     '--skip', 
@@ -101,12 +94,8 @@ sample = args.sample
 filtering = args.filtering
 model = args.model
 ncombos = args.ncombos
-ncores = args.ncores
-GS = args.GS 
+ncores = args.ncores 
 score = args.score
-
-if GS and ncombos > 1:
-    raise ValueError('To test more than one combo, --GS needs to be flagged.')
 
 ########################################################################
 
@@ -191,6 +180,7 @@ def main():
             ]
         ]
         DF.append(df)
+        logger.info(f'Finished comparison {comparison}, {t.stop()} s.')
 
     df = pd.concat(DF, axis=0)
     df['evidence'].describe()
