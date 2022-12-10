@@ -170,7 +170,7 @@ def main():
         logger.info(f'Starting comparison {comparison}, {i+1}/{Y.shape[1]}...')
 
         y_ = Y[:, i]
-        df = classification(X, y_, feature_names, key=model, GS=GS, 
+        df = classification(X, y_, feature_names, key=model, GS=True, 
             score=score, n_combos=ncombos, cores_model=ncores, cores_GS=1)
         df = df.assign(comparison=comparison, feature_type=filtering)          
         df = df.loc[:,
