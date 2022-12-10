@@ -2,11 +2,33 @@
 Module to preprocess AFMs: reformat original AFM; filter variants/cells.
 """
 
-from timeit import repeat
+import sys
+import gc
+import re
+from tracemalloc import stop
 import numpy as np
 import pandas as pd
 import scanpy as sc
 import anndata
+
+
+##
+
+
+def create_one_base_tables(A, base):
+    '''
+    Create a full cell x variant AFM from the original maegatk output, and one of the 4 bases,
+    create the allelic frequency df for that base, a cell x {pos}_{base} table.
+    '''
+    X = np.array((A.layers[f'{base}_counts_fw'] + A.layers[f'{base}_counts_rev']) / A.layers['coverage'])
+    q = A.layers[f'{base}_qual_fw'] + A.layers[f'{base}_qual_rev']
+    m = np.where(A.layers[f'{base}_qual_fw'].toarray() > 0, 1, 0) + np.where(A.layers[f'{base}_qual_rev'].toarray() > 0, 1, 0)
+    qual = q.toarray() / m
+    df_x = pd.DataFrame(data=X, index=A.obs_names, columns=[ f'{pos}_{base}' for pos in range(A.shape[1]) ])
+    df_qual = pd.DataFrame(data=qual, index=A.obs_names, columns=[ f'{pos}_{base}' for pos in range(A.shape[1]) ])
+    gc.collect()
+
+    return df_x, df_qual
 
 
 ##
@@ -23,51 +45,61 @@ def format_matrix(A, cbc_gbc_df):
     A.obs['GBC'] = pd.Categorical(A.obs['GBC'])
     A.layers['A_counts_fw'] = A.X
 
-    # Create a coverage layer for each feature (each of the possible base per position)
-    coverage = np.repeat(A.layers['coverage'].toarray(), repeats=4, axis=1)
-
     # Create lists for all possible position-base and position-reference combos 
     all_features = [ f'{x}_{base}' for x in range(16569) for base in ['A', 'C', 'T', 'G'] ]
     ref_features = A.var.reset_index().loc[:, ['index', 'refAllele']].agg('_'.join, axis=1).tolist()
 
-    # Initialize AFM
+    # For each position and cell, compute each base AF and quality tables
+    A_x, A_qual = create_one_base_tables(A, 'A')
+    C_x, C_qual = create_one_base_tables(A, 'C')
+    T_x, T_qual = create_one_base_tables(A, 'T')
+    G_x, G_qual = create_one_base_tables(A, 'G')
+
+    # Create a base quality layer, at each site
+    quality = np.zeros(A.shape)
+    n_times = np.zeros(A.shape)
+    for k in A.layers:
+        if bool(re.search('qual', k)):
+            quality += A.layers[k].toarray()
+            r, c = np.nonzero(A.layers[k].toarray())
+            n_times[r, c] += 1
+    quality = quality / n_times
+
+    # Initialize AFM, its uns and layers slots
     afm = anndata.AnnData(
         X=np.zeros((len(A.obs_names), len(all_features))),
         obs=A.obs
     )
+    # Add per position coverage and quality
     afm.var_names = all_features
-    afm.layers['coverage'] = coverage
-
-    # For each position and cell, compute each base AF
-    A_x = np.array((A.layers['A_counts_fw'] + A.layers['A_counts_rev']) / A.layers['coverage'])
-    C_x = np.array((A.layers['C_counts_fw'] + A.layers['C_counts_rev']) / A.layers['coverage'])
-    T_x = np.array((A.layers['T_counts_fw'] + A.layers['T_counts_rev']) / A.layers['coverage'])
-    G_x = np.array((A.layers['G_counts_fw'] + A.layers['G_counts_rev']) / A.layers['coverage'])
+    afm.uns['per_position_coverage'] = A.layers['coverage'].toarray()
+    afm.uns['per_position_quality'] = quality # nans matained, NB
+    afm.layers['quality'] = np.zeros((len(A.obs_names), len(all_features)))
 
     # Fill afm and store variants names
     variants = []
-    j = 0
-    for i in range(afm.shape[1]):
-        pos_features = all_features[j:j+4]
-        for var in pos_features:
-            if var.endswith('A'):
-                afm[:, var].X = A_x[:, i]
-            elif var.endswith('C'):
-                afm[:, var].X = C_x[:, i]
-            elif var.endswith('T'):
-                afm[:, var].X = T_x[:, i]
-            elif var.endswith('G'):
-                afm[:, var].X = G_x[:, i]
-            else:
-                print('N found. I am not adding anything')
-            if var not in ref_features:
-                variants.append(var)
-        j += 4
+    for i, x in enumerate(afm.var_names):
+        if x.endswith('A'):
+            afm[:, x].X = A_x.loc[:, x].values
+            afm.layers['quality'][:, i] = A_qual.loc[:, x].values
+        elif x.endswith('C'):
+            afm[:, x].X = C_x.loc[:, x].values
+            afm.layers['quality'][:, i] = C_qual.loc[:, x].values
+        elif x.endswith('T'):
+            afm[:, x].X = T_x.loc[:, x].values
+            afm.layers['quality'][:, i] = T_qual.loc[:, x].values
+        elif x.endswith('G'):
+            afm[:, x].X = G_x.loc[:, x].values
+            afm.layers['quality'][:, i] = G_qual.loc[:, x].values
+        else:
+            print('N found. I am not adding anything')
+        if x not in ref_features:
+            variants.append(x)
     
     # Subset afm for variants only
     afm_variants = afm[:, variants].copy()
+    gc.collect()
     
-
     return afm_variants, variants
 
 
@@ -76,10 +108,9 @@ def format_matrix(A, cbc_gbc_df):
 
 def nans_as_zeros(afm):
     """
-    Fill nans with zeros. Technical holes are considered as biologically meaningul, absent quantities.
+    Fill nans with zeros. Technical holes are considered as biologically meaningul zeroes.
     """
-    X = afm.X
-    X_copy = X.copy()
+    X_copy = afm.X.copy()
     X_copy[np.isnan(X_copy)] = 0
     afm.X = X_copy
 
@@ -89,34 +120,139 @@ def nans_as_zeros(afm):
 ##
 
 
-def filter_CV(afm, n=1000):
+def filter_CV(afm, mean_coverage=100, n=100):
     """
     Filter variants based on their coefficient of variation.
     """
-    X = afm.X
-    CV = X.mean(axis=0) / X.std(axis=0)
-    idx_to_filter = np.argsort(CV)[::-1][:n]
-    afm = afm[:, idx_to_filter].copy()
+    # Cells
+    test_cells = np.mean(afm.uns['per_position_coverage'], axis=1) > mean_coverage # high quality cells
+    filtered = afm[test_cells, :].copy()
+    # Vars
+    CV = np.nanmean(afm.X, axis=0) / np.nanvar(afm.X, axis=0)
+    variants = np.argsort(CV)[::-1][:n]
+    filtered = filtered[:, variants].copy()
     
-    return afm
+    return filtered
 
 
 ##
 
 
-def filter_tresholds(afm, median_coverage=100, median_af=0.01, min_perc_cells=0.1):
+def filter_ludwig2019(afm, mean_coverage=100, mean_AF=0.5, mean_qual=0.2):
     """
-    Filter variants based on their coefficient of variation.
+    Filter cells and variants based on fixed tresholds adopted in Ludwig et al., 2019, 
+    in the xperiment without ATAC-seq reference.
     """
-    X = afm.X
-    cov = afm.layers['coverage']
+    # Cells
+    test_cells = np.mean(afm.uns['per_position_coverage'], axis=1) > mean_coverage # high quality cells
+    filtered = afm[test_cells, :].copy()
+    # Vars
+    test_vars_het = np.nanmean(filtered.X, axis=0) > mean_AF # highly heteroplasmic variants
+    test_vars_qual = np.nanmean(filtered.layers['quality'], axis=0) > mean_qual # high quality vars
+    test_vars = test_vars_het & test_vars_qual
+    filtered = filtered[:, test_vars].copy()
 
-    test_median_af = np.median(X, axis=0) > median_af
-    test_min_perc = (np.sum(X>0, axis=0) / X.shape[0]) > min_perc_cells
-    test_median_coverage = np.median(cov, axis=0) > median_coverage
+    return filtered
 
-    idx_to_filter = test_median_af & test_min_perc & test_median_coverage
-    afm = afm[:, idx_to_filter].copy()
 
+##
+
+
+def filter_velten2021(afm, mean_coverage=100, mean_AF=0.1, min_cell_perc=0.2):
+    """
+    Filter cells and variants based on fixed tresholds adopted in Ludwig et al., 2021.
+    """
+    # Cells
+    test_cells = np.mean(afm.uns['per_position_coverage'], axis=1) > mean_coverage # high quality cells
+    filtered = afm[test_cells, :].copy()
+    # Vars
+    test_vars_considering_site = []
+    test_sites = np.sum(filtered.uns['per_position_coverage'] > 5, axis=0) > 20
+    for x in filtered.var_names:
+        i = int(x.split('_')[0])
+        if test_sites[i]:
+            test_vars_considering_site.append(True)
+        else:
+            test_vars_considering_site.append(False)
+    test_vars_considering_site = np.array(test_vars_considering_site)
+    test_vars_het = np.nanmean(filtered.X, axis=0) > mean_AF
+    test_vars_exp = (np.sum(filtered.X > 0, axis=0) / filtered.shape[0]) > min_cell_perc
+    test_vars = test_vars_considering_site & test_vars_het & test_vars_exp
+    filtered = afm[:, test_vars].copy()
+    
+    return filtered
+
+##
+
+
+def filter_miller2022(afm, mean_coverage=100, mean_qual=0.3, perc_1=0.01, perc_99=0.1):
+    """
+    Filter cells and variants based on adaptive adopted in Miller et al., 2022.
+    """
+    # Cells
+    test_cells = np.mean(afm.uns['per_position_coverage'], axis=1) > mean_coverage # high quality cells
+    filtered = afm[test_cells, :].copy()
+    # Vars
+    test_vars_considering_site = []
+    test_sites = np.mean(filtered.uns['per_position_coverage'], axis=0) > mean_coverage
+    for x in filtered.var_names:
+        i = int(x.split('_')[0])
+        if test_sites[i]:
+            test_vars_considering_site.append(True)
+        else:
+            test_vars_considering_site.append(False)
+    test_vars_considering_site = np.array(test_vars_considering_site)
+    test_vars_qual = np.nanmean(filtered.layers['quality'], axis=0) > mean_qual
+    test_vars_het = (np.percentile(filtered.X, q=1, axis=0) < perc_1) & (np.percentile(filtered.X, q=99, axis=0) > perc_99)
+    test_vars = test_vars_considering_site & test_vars_qual & test_vars_het
+    filtered = afm[:, test_vars].copy()
+
+    return filtered
+
+
+##
+
+
+def filter_density(afm, density=0.5, steps=np.Inf):
+    """
+    Filter cells and variants based on the iterative filtering algorithm adopted by Moravec et al., 2022.
+    """
+    # Get AF matrix, convert into a df
+    X_bool = np.where(~np.isnan(afm.X), 1, 0)
+
+    # Check initial density not already above the target one
+    d0 = X_bool.sum() / X_bool.size
+    if d0 >= density:
+        raise ValueError('Density is already more than the desired target!')
+        
+    else:
+        print(f'Initial density: {d0}')
+
+    # Iteratively remove lowest density rows/cols, until desired density is reached
+    densities = []
+    i = 0
+    while i < steps:
+
+        print(f'Step {i}:')
+        rowsums = X_bool.sum(axis=1)
+        colsums = X_bool.sum(axis=0)
+        d = X_bool.sum() / X_bool.size
+        densities.append(d)
+        print(f'Density: {d}')
+
+        if d >= density or (len(rowsums) == 0 or len(colsums) == 0):
+            break
+
+        rowmin = rowsums.min()
+        colmin = colsums.min()
+        if rowmin <= colmin:
+            lowest_density_rows = np.where(rowsums == rowmin)[0]
+            X_bool = X_bool[ [ i for i in range(X_bool.shape[0]) if i not in lowest_density_rows ], :]
+            afm = afm[ [ i for i in range(afm.shape[0]) if i not in lowest_density_rows ], :].copy()
+        else:
+            lowest_density_cols = np.where(colsums == colmin)[0]
+            X_bool = X_bool[:, [ i for i in range(X_bool.shape[1]) if i not in lowest_density_cols ] ]
+            afm = afm[:, [ i for i in range(afm.shape[1]) if i not in lowest_density_cols ] ].copy()
+        i += 1
+    
     return afm
-
