@@ -182,9 +182,8 @@ def main():
             ]
             DF.append(df)
             logger.info(f'Finished comparison {comparison}, {t.stop()} s.')
-        
         else:
-            print(f'Sample{y.categories[i]} does not reach 50 cells. Skip this one...')
+            logger.info(f'Sample {y.categories[i]} does not reach 50 cells. Skip this one, {t.stop()} s.')
 
     df = pd.concat(DF, axis=0)
     df['evidence'].describe()
