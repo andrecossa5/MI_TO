@@ -34,15 +34,17 @@ def create_one_base_tables(A, base):
 ##
 
 
-def format_matrix(A, cbc_gbc_df):
+def format_matrix(A, cbc_gbc_df=None, no_clones=False):
     """
     Create a full cell x variant AFM from the original maegatk output. 
     Add lentiviral clones' labels to resulting .obs.
     """
 
-    # Add labels to .obs, add A fw counts to layers
-    A.obs = A.obs.join(cbc_gbc_df)
-    A.obs['GBC'] = pd.Categorical(A.obs['GBC'])
+    # Add labels to .obs
+    if not no_clones:
+        A.obs = A.obs.join(cbc_gbc_df)
+        A.obs['GBC'] = pd.Categorical(A.obs['GBC'])
+    # add A fw counts to layers
     A.layers['A_counts_fw'] = A.X
 
     # Create lists for all possible position-base and position-reference combos 

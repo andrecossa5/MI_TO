@@ -13,12 +13,24 @@ from MI_TO.spectral_clustering import *
 matplotlib.use('MacOSX')
 
 # Read data
-path_data = '/Users/IEO5505/Desktop/MI_TO/data/'
-orig = sc.read(path_data + '/AFMs/MDA_clones_afm.h5ad')
-CBC_GBC = pd.read_csv(path_data + 'CBC_GBC_cells/CBC_GBC_MDA_clones.csv', index_col=0)
+path_main = '/Users/IEO5505/Desktop/MI_TO/'
+path_results = path_main + 'results_and_plots/three_samples/exploratory/'
 
-# Create variants AFM
-afm, variants = format_matrix(orig, CBC_GBC)
+ORIG = {}
+
+samples = ['MDA_clones', 'AML_clones', 'PDX']
+for x in samples:
+    orig = sc.read(path_main + f'data/AFMs/{x}_afm.h5ad')
+    orig.obs = orig.obs.assign(sample=x)
+    ORIG[x] = orig
+    meta_vars = orig.var
+
+orig = anndata.concat(ORIG.values(), axis=0)
+orig.var = meta_vars
+
+del ORIG
+
+afm, variants = format_matrix(orig, no_clones=True)
 
 filter_CV(afm, mean_coverage=100, n=50)
 filter_ludwig2019(afm, mean_coverage=100, mean_AF=0.5, mean_qual=0.2)
@@ -27,12 +39,12 @@ filter_miller2022(afm, mean_coverage=100, mean_qual=0.3, perc_1=0.01, perc_99=0.
 filter_density(afm, density=0.7, steps=np.Inf)
 
 # Class
-a = filter_miller2022(afm, mean_coverage=100, mean_qual=0.3, perc_1=0.01, perc_99=0.1)
+a = filter_CV(afm, mean_coverage=100, n=100)
 a = nans_as_zeros(a)
 X = a.X
 
 feature_names = a.var_names
-y = pd.Categorical(a.obs['GBC'])
+y = pd.Categorical(a.obs['sample'])
 
 if len(y.categories) > 2:
     Y = one_hot_from_labels(y)
@@ -43,7 +55,7 @@ if len(y.categories) > 2:
         y_ = Y[:, i]
         df = classification(X, y_, feature_names, key='xgboost', GS=True, 
             score='f1', n_combos=10, cores_model=8, cores_GS=1)
-        df = df.assign(comparison=comparison, feature_type='CV')          
+        df = df.assign(comparison=comparison, feature_type='miller2022')          
         df = df.loc[:,
             ['feature_type', 'rank', 'evidence', 'evidence_type', 'effect_size', 'es_rescaled',
             'effect_type', 'comparison']

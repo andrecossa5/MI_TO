@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-# Clones classification script
+# Samples classification script
 
 ########################################################################
 
@@ -15,8 +15,7 @@ my_parser = argparse.ArgumentParser(
     prog='clones_classification',
     description=
         '''
-        Systematically testing the ability of (filtered) MT-SNVs to distinguish ground truth clonal labels
-        from lentiviral barcoding.
+        Systematically testing the ability of (filtered) MT-SNVs to distinguish sample memberships.
         '''
 )
 
@@ -29,14 +28,6 @@ my_parser.add_argument(
     type=str,
     default='..',
     help='The path to the main project directory. Default: .. .'
-)
-
-# Filter
-my_parser.add_argument(
-    '--sample', 
-    type=str,
-    default='MDA_clones',
-    help='Sample to use. Default: MDA_clones.'
 )
 
 # Filter
@@ -90,7 +81,6 @@ my_parser.add_argument(
 args = my_parser.parse_args()
 
 path_main = args.path_main
-sample = args.sample
 filtering = args.filtering
 model = args.model
 ncombos = args.ncombos
@@ -112,13 +102,13 @@ if not args.skip:
 
     # Set other paths
     path_data = path_main + '/data/'
-    path_results = path_main + '/results_and_plots/clones_classification/'
+    path_results = path_main + '/results_and_plots/samples_classification/'
     path_runs = path_main + '/runs/'
 
     #-----------------------------------------------------------------#
 
     # Set logger 
-    logger = set_logger(path_runs, f'logs_{sample}_{filtering}_{model}_{ncombos}_{score}.txt')
+    logger = set_logger(path_runs, f'logs_{filtering}_{model}_{ncombos}_{score}.txt')
 
 ########################################################################
 
@@ -132,14 +122,22 @@ def main():
     t = Timer()
     t.start()
 
-    logger.info(f'Execute classification: --sample {sample} --filtering {filtering} --model {model} --ncombos {ncombos} --score {score}')
+    logger.info(f'Execute classification: --filtering {filtering} --model {model} --ncombos {ncombos} --score {score}')
 
-    # Read data
-    orig = sc.read(path_data + f'/AFMs/{sample}_afm.h5ad')
-    CBC_GBC = pd.read_csv(path_data + f'CBC_GBC_cells/CBC_GBC_{sample}.csv', index_col=0)
+    # Read and format data
+    ORIG = {}
+    samples = ['MDA_clones', 'AML_clones', 'PDX']
+    for x in samples:
+        orig = sc.read(path_data + f'AFMs/{x}_afm.h5ad')
+        orig.obs = orig.obs.assign(sample=x)
+        ORIG[x] = orig
+        meta_vars = orig.var
+    orig = anndata.concat(ORIG.values(), axis=0)
+    orig.var = meta_vars
+    del ORIG
 
     # Create variants AFM and filter variants
-    afm, variants = format_matrix(orig, CBC_GBC)
+    afm, variants = format_matrix(orig, no_clones=True)
 
     if filtering == 'CV':
         a = filter_CV(afm, mean_coverage=100, n=50)
@@ -156,7 +154,7 @@ def main():
     a = nans_as_zeros(a)
     X = a.X
     feature_names = a.var_names
-    y = pd.Categorical(a.obs['GBC'])
+    y = pd.Categorical(a.obs['sample'])
     Y = one_hot_from_labels(y)
 
     logger.info(f'Reading and formatting AFM, X and y complete, total {t.stop()} s.')
@@ -186,13 +184,13 @@ def main():
             logger.info(f'Finished comparison {comparison}, {t.stop()} s.')
         
         else:
-            print(f'Clone {y.categories[i]} does not reach 50 cells. Skip this one...')
+            print(f'Sample{y.categories[i]} does not reach 50 cells. Skip this one...')
 
     df = pd.concat(DF, axis=0)
     df['evidence'].describe()
 
     # Save results
-    df.to_excel(path_results + f'clones_{sample}_{filtering}_{model}_{ncombos}_{score}.xlsx')
+    df.to_excel(path_results + f'{filtering}_{model}_{ncombos}_{score}.xlsx')
 
     #-----------------------------------------------------------------#
 

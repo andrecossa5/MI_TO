@@ -136,3 +136,6 @@ data/
 
 # runs
 runs/
+
+# results
+results_and_plots/
