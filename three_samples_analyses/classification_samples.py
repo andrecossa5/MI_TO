@@ -177,13 +177,14 @@ def main():
     # Format X and Y for classification
     a = nans_as_zeros(a)
     ncells = a.shape[0]
-    n_clones_analyzed = len(a.obs['GBC'].unique())
     X = a.X
     feature_names = a.var_names
-    y = pd.Categorical(a.obs['GBC'])
+    y = pd.Categorical(a.obs['sample'])
     Y = one_hot_from_labels(y)
 
     logger.info(f'Reading and formatting AFM, X and y complete, total {t.stop()} s.')
+    logger.info(f'Total cells and clones in the original QCed dataset (only transcriptional and perturb seq QC metrics): {ncells0};')
+    logger.info(f'Total cells and variants in final filtered dataset: {ncells}; {a.shape[1]}.')
 
     # Here we go
     DF = []
@@ -215,7 +216,7 @@ def main():
     df['evidence'].describe()
 
     # Save results
-    df.to_excel(path_results + f'clones_{filtering}_{min_cov_treshold}_{model}_{score}.xlsx')
+    df.to_excel(path_results + f'samples_{filtering}_{min_cov_treshold}_{model}_{score}.xlsx')
 
     #-----------------------------------------------------------------#
 
