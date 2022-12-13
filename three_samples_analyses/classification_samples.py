@@ -30,6 +30,7 @@ my_parser.add_argument(
     help='The path to the main project directory. Default: .. .'
 )
 
+
 # Filter
 my_parser.add_argument(
     '--filtering', 
@@ -46,7 +47,7 @@ my_parser.add_argument(
     help='Classifier chosen. Default: xgboost.'
 )
 
-# Model
+# ncombos
 my_parser.add_argument(
     '--ncombos', 
     type=int,
@@ -54,12 +55,20 @@ my_parser.add_argument(
     help='n combinations of hyperparameters to test. Default: 50.'
 )
 
-# Model
+# ncores
 my_parser.add_argument(
     '--ncores', 
     type=int,
     default=8,
     help='ncores to use for model training. Default: 8.'
+)
+
+# min_cov_treshold
+my_parser.add_argument(
+    '--min_cov_treshold', 
+    type=int,
+    default=30,
+    help='Include in the analysis only cells MAESTER sites mean coverage > min_cov_treshold. Default: 30.'
 )
 
 # Score
@@ -86,6 +95,7 @@ model = args.model
 ncombos = args.ncombos
 ncores = args.ncores 
 score = args.score
+min_cov_treshold = args.min_cov_treshold
 
 ########################################################################
 
@@ -101,6 +111,7 @@ if not args.skip:
     #-----------------------------------------------------------------#
 
     # Set other paths
+    path_main = '/Users/IEO5505/Desktop/MI_TO/'
     path_data = path_main + '/data/'
     path_results = path_main + '/results_and_plots/samples_classification/'
     path_runs = path_main + '/runs/'
@@ -108,7 +119,7 @@ if not args.skip:
     #-----------------------------------------------------------------#
 
     # Set logger 
-    logger = set_logger(path_runs, f'logs_{filtering}_{model}_{ncombos}_{score}.txt')
+    logger = set_logger(path_runs, f'logs_{filtering}_{min_cov_treshold}_{model}_{score}.txt')
 
 ########################################################################
 
@@ -122,11 +133,11 @@ def main():
     t = Timer()
     t.start()
 
-    logger.info(f'Execute classification: --filtering {filtering} --model {model} --ncombos {ncombos} --score {score}')
+    logger.info(f'Execute classification: --filtering {filtering} --model {model} --ncombos {ncombos} --score {score} --min_cov_treshold {min_cov_treshold}')
 
     # Read and format data
     ORIG = {}
-    samples = ['MDA_clones', 'AML_clones', 'PDX']
+    samples = ['MDA', 'AML', 'PDX']
     for x in samples:
         orig = sc.read(path_data + f'AFMs/{x}_afm.h5ad')
         orig.obs = orig.obs.assign(sample=x)
@@ -136,25 +147,40 @@ def main():
     orig.var = meta_vars
     del ORIG
 
-    # Create variants AFM and filter variants
+    # Create variants AFM 
     afm, variants = format_matrix(orig, no_clones=True)
+    ncells0 = afm.shape[0]
 
-    if filtering == 'CV':
-        a = filter_CV(afm, mean_coverage=100, n=50)
-    elif filtering == 'ludwig2019':
-        a = filter_ludwig2019(afm, mean_coverage=100, mean_AF=0.5, mean_qual=0.2)
-    elif filtering == 'velten2021':
-        a = filter_velten2021(afm, mean_coverage=100, mean_AF=0.1, min_cell_perc=0.2)
-    elif filtering == 'miller2022':
-        a = filter_miller2022(afm, mean_coverage=100, mean_qual=0.3, perc_1=0.01, perc_99=0.1)
+    # Filter 'good quality cells': 
+    # 1: passing transcriptional QC (already done); 
+    # 2: having a mean MEASTER site coverage >= min_cov_treshold;
+    # Only on 'good quality cells', filter variants. If density method is used, cells and genes are filtered jointly, 
+    # and no fixed treshold on MAESTER sites mean coverage is applied.
+
+    if filtering in ['CV', 'ludwig2019', 'velten2021', 'miller2022']:
+
+        # Cells
+        afm = filter_cells_coverage(afm, mean_coverage=min_cov_treshold) 
+        # Variants
+        if filtering == 'CV':
+            a = filter_CV(afm, n=50)
+        elif filtering == 'ludwig2019':
+            a = filter_ludwig2019(afm, mean_AF=0.5, mean_qual=0.2)
+        elif filtering == 'velten2021':
+            a = filter_velten2021(afm, mean_AF=0.1, min_cell_perc=0.2)
+        elif filtering == 'miller2022':
+            a = filter_miller2022(afm, mean_coverage=100, mean_qual=0.3, perc_1=0.01, perc_99=0.1)
+
     elif filtering == 'density':
-        a = filter_density(afm, density=0.7, steps=np.Inf)
+        afm = filter_density(afm, density=0.5, steps=np.Inf)
     
     # Format X and Y for classification
     a = nans_as_zeros(a)
+    ncells = a.shape[0]
+    n_clones_analyzed = len(a.obs['GBC'].unique())
     X = a.X
     feature_names = a.var_names
-    y = pd.Categorical(a.obs['sample'])
+    y = pd.Categorical(a.obs['GBC'])
     Y = one_hot_from_labels(y)
 
     logger.info(f'Reading and formatting AFM, X and y complete, total {t.stop()} s.')
@@ -181,15 +207,15 @@ def main():
                 ]
             ]
             DF.append(df)
-            logger.info(f'Finished comparison {comparison}, {t.stop()} s.')
+            logger.info(f'Comparison {comparison} finished: {t.stop()} s.')
         else:
-            logger.info(f'Sample {y.categories[i]} does not reach 50 cells. Skip this one, {t.stop()} s.')
+            logger.info(f'Sample {y.categories[i]} does not reach 50 cells. Skip this one... {t.stop()} s.')
 
     df = pd.concat(DF, axis=0)
     df['evidence'].describe()
 
     # Save results
-    df.to_excel(path_results + f'{filtering}_{model}_{ncombos}_{score}.xlsx')
+    df.to_excel(path_results + f'clones_{filtering}_{min_cov_treshold}_{model}_{score}.xlsx')
 
     #-----------------------------------------------------------------#
 

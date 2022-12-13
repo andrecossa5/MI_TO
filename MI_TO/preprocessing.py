@@ -5,7 +5,7 @@ Module to preprocess AFMs: reformat original AFM; filter variants/cells.
 import sys
 import gc
 import re
-from tracemalloc import stop
+from logging import getLogger
 import numpy as np
 import pandas as pd
 import scanpy as sc
@@ -122,66 +122,64 @@ def nans_as_zeros(afm):
 ##
 
 
-def filter_CV(afm, mean_coverage=100, n=100):
+def filter_cells_coverage(afm, mean_coverage=100):
+    """
+    Simple filter to subset an AFM only for cells with at least n mean site coverage. 
+    """
+    test_cells = np.mean(afm.uns['per_position_coverage'], axis=1) > mean_coverage 
+    filtered = afm[test_cells, :].copy()
+    return filtered
+
+
+##
+
+
+def filter_CV(afm, n=100):
     """
     Filter variants based on their coefficient of variation.
     """
-    # Cells
-    test_cells = np.mean(afm.uns['per_position_coverage'], axis=1) > mean_coverage # high quality cells
-    filtered = afm[test_cells, :].copy()
-    # Vars
     CV = np.nanmean(afm.X, axis=0) / np.nanvar(afm.X, axis=0)
     variants = np.argsort(CV)[::-1][:n]
-    filtered = filtered[:, variants].copy()
-    
+    filtered = afm[:, variants].copy()
     return filtered
 
 
 ##
 
 
-def filter_ludwig2019(afm, mean_coverage=100, mean_AF=0.5, mean_qual=0.2):
+def filter_ludwig2019(afm, mean_AF=0.5, mean_qual=0.2):
     """
-    Filter cells and variants based on fixed tresholds adopted in Ludwig et al., 2019, 
+    Filter variants based on fixed tresholds adopted in Ludwig et al., 2019, 
     in the xperiment without ATAC-seq reference.
     """
-    # Cells
-    test_cells = np.mean(afm.uns['per_position_coverage'], axis=1) > mean_coverage # high quality cells
-    filtered = afm[test_cells, :].copy()
-    # Vars
-    test_vars_het = np.nanmean(filtered.X, axis=0) > mean_AF # highly heteroplasmic variants
-    test_vars_qual = np.nanmean(filtered.layers['quality'], axis=0) > mean_qual # high quality vars
+    test_vars_het = np.nanmean(afm.X, axis=0) > mean_AF # highly heteroplasmic variants
+    test_vars_qual = np.nanmean(afm.layers['quality'], axis=0) > mean_qual # high quality vars
     test_vars = test_vars_het & test_vars_qual
-    filtered = filtered[:, test_vars].copy()
-
+    filtered = afm[:, test_vars].copy()
     return filtered
 
 
 ##
 
 
-def filter_velten2021(afm, mean_coverage=100, mean_AF=0.1, min_cell_perc=0.2):
+def filter_velten2021(afm, mean_AF=0.1, min_cell_perc=0.2):
     """
-    Filter cells and variants based on fixed tresholds adopted in Ludwig et al., 2021.
+    Filter variants based on fixed tresholds adopted in Ludwig et al., 2021.
     """
-    # Cells
-    test_cells = np.mean(afm.uns['per_position_coverage'], axis=1) > mean_coverage # high quality cells
-    filtered = afm[test_cells, :].copy()
-    # Vars
     test_vars_considering_site = []
-    test_sites = np.sum(filtered.uns['per_position_coverage'] > 5, axis=0) > 20
-    for x in filtered.var_names:
+    test_sites = np.sum(afm.uns['per_position_coverage'] > 5, axis=0) > 20
+    for x in afm.var_names:
         i = int(x.split('_')[0])
         if test_sites[i]:
             test_vars_considering_site.append(True)
         else:
             test_vars_considering_site.append(False)
     test_vars_considering_site = np.array(test_vars_considering_site)
-    test_vars_het = np.nanmean(filtered.X, axis=0) > mean_AF
-    test_vars_exp = (np.sum(filtered.X > 0, axis=0) / filtered.shape[0]) > min_cell_perc
+    test_vars_het = np.nanmean(afm.X, axis=0) > mean_AF
+    test_vars_exp = (np.sum(afm.X > 0, axis=0) / afm.shape[0]) > min_cell_perc
     test_vars = test_vars_considering_site & test_vars_het & test_vars_exp
     filtered = afm[:, test_vars].copy()
-    
+
     return filtered
 
 ##
@@ -189,23 +187,19 @@ def filter_velten2021(afm, mean_coverage=100, mean_AF=0.1, min_cell_perc=0.2):
 
 def filter_miller2022(afm, mean_coverage=100, mean_qual=0.3, perc_1=0.01, perc_99=0.1):
     """
-    Filter cells and variants based on adaptive adopted in Miller et al., 2022.
+    Filter variants based on adaptive adopted in Miller et al., 2022.
     """
-    # Cells
-    test_cells = np.mean(afm.uns['per_position_coverage'], axis=1) > mean_coverage # high quality cells
-    filtered = afm[test_cells, :].copy()
-    # Vars
     test_vars_considering_site = []
-    test_sites = np.mean(filtered.uns['per_position_coverage'], axis=0) > mean_coverage
-    for x in filtered.var_names:
+    test_sites = np.mean(afm.uns['per_position_coverage'], axis=0) > mean_coverage
+    for x in afm.var_names:
         i = int(x.split('_')[0])
         if test_sites[i]:
             test_vars_considering_site.append(True)
         else:
             test_vars_considering_site.append(False)
     test_vars_considering_site = np.array(test_vars_considering_site)
-    test_vars_qual = np.nanmean(filtered.layers['quality'], axis=0) > mean_qual
-    test_vars_het = (np.percentile(filtered.X, q=1, axis=0) < perc_1) & (np.percentile(filtered.X, q=99, axis=0) > perc_99)
+    test_vars_qual = np.nanmean(afm.layers['quality'], axis=0) > mean_qual
+    test_vars_het = (np.percentile(afm.X, q=1, axis=0) < perc_1) & (np.percentile(afm.X, q=99, axis=0) > perc_99)
     test_vars = test_vars_considering_site & test_vars_qual & test_vars_het
     filtered = afm[:, test_vars].copy()
 
@@ -217,15 +211,17 @@ def filter_miller2022(afm, mean_coverage=100, mean_qual=0.3, perc_1=0.01, perc_9
 
 def filter_density(afm, density=0.5, steps=np.Inf):
     """
-    Filter cells and variants based on the iterative filtering algorithm adopted by Moravec et al., 2022.
+    Jointly filter cells and variants based on the iterative filtering algorithm adopted by Moravec et al., 2022.
     """
     # Get AF matrix, convert into a df
+    logger = logging.getLogger("my_logger")
     X_bool = np.where(~np.isnan(afm.X), 1, 0)
 
     # Check initial density not already above the target one
     d0 = X_bool.sum() / X_bool.size
     if d0 >= density:
-        raise ValueError('Density is already more than the desired target!')
+        logger.info(f'Density is already more than the desired target: {d0}')
+        return afm
         
     else:
         print(f'Initial density: {d0}')
