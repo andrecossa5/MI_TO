@@ -111,7 +111,6 @@ if not args.skip:
     #-----------------------------------------------------------------#
 
     # Set other paths
-    path_main = '/Users/IEO5505/Desktop/MI_TO/'
     path_data = path_main + '/data/'
     path_results = path_main + '/results_and_plots/samples_classification/'
     path_runs = path_main + '/runs/'
