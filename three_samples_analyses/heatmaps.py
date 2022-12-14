@@ -46,7 +46,7 @@ sample_colors = {'MDA_clones':'#DA5700', 'AML_clones':'#0074DA', 'PDX':'#0F9221'
 afm = AFMs['MDA_clones']
 
 # Filter, convert nans, create col-colors
-a = filter_miller2022(afm)
+a = filter_velten2021(afm)
 a = nans_as_zeros(a)
 clone_colors = create_palette(afm.obs, 'GBC', palette='dark')
 cell_anno_clones = [ clone_colors[clone] for clone in afm.obs['GBC'] ]

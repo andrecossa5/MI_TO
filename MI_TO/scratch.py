@@ -1,71 +1,85 @@
 """
-Scratch for AFM construction, filtering, distance matrices computations, and spectral clustering.
+Scratch for AFM construction, filtering, distance matrices computations, and vizualization
 """
 
 from Cellula._utils import Timer
-from Cellula.preprocessing._metrics import custom_ARI
 from Cellula.plotting._plotting import *
-from Cellula.ML._ML import *
 from Cellula.dist_features._dist_features import *
 from MI_TO.preprocessing import *
 from MI_TO.kNN import *
+from MI_TO.distances import *
+from MI_TO.heatmaps_plots import *
 from MI_TO.spectral_clustering import *
 matplotlib.use('MacOSX')
 
 # Read data
 path_main = '/Users/IEO5505/Desktop/MI_TO/'
-path_results = path_main + 'results_and_plots/three_samples/exploratory/'
+path_data = path_main + 'data/'
+path_results = path_main + 'results_and_plots/viz_clones/'
+sample = 'MDA'
+filtering = 'ludwig2019'
+min_cov_treshold = 30
+min_cell_number = 10
 
-ORIG = {}
+# Read data
+orig = sc.read(path_data + f'/AFMs/{sample}_afm.h5ad')
+CBC_GBC = pd.read_csv(path_data + f'CBC_GBC_cells/CBC_GBC_{sample}.csv', index_col=0)
 
-samples = ['MDA_clones', 'AML_clones', 'PDX']
-for x in samples:
-    orig = sc.read(path_main + f'data/AFMs/{x}_afm.h5ad')
-    orig.obs = orig.obs.assign(sample=x)
-    ORIG[x] = orig
-    meta_vars = orig.var
+# Format variants AFM
+afm, variants = format_matrix(orig, CBC_GBC)
+ncells0 = afm.shape[0]
+n_all_clones = len(afm.obs['GBC'].unique())
 
-orig = anndata.concat(ORIG.values(), axis=0)
-orig.var = meta_vars
+# Filter cells and vars
+if filtering in ['CV', 'ludwig2019', 'velten2021', 'miller2022']:
+    # Cells
+    a_cells = filter_cells_coverage(afm, mean_coverage=min_cov_treshold) 
+    if min_cell_number > 0:
+        cell_counts = a_cells.obs.groupby('GBC').size()
+        clones_to_retain = cell_counts[cell_counts>min_cell_number].index 
+        cells_to_retain = a_cells.obs.query('GBC in @clones_to_retain').index
+        a_cells = a_cells[cells_to_retain, :].copy()
+    # Variants
+    if filtering == 'CV':
+        a = filter_CV(a_cells, n=50)
+    elif filtering == 'ludwig2019':
+        a = filter_ludwig2019(a_cells, mean_AF=0.5, mean_qual=0.2)
+    elif filtering == 'velten2021':
+        a = filter_velten2021(a_cells, mean_AF=0.1, min_cell_perc=0.2)
+    elif filtering == 'miller2022':
+        a = filter_miller2022(a_cells, mean_coverage=100, mean_qual=0.3, perc_1=0.001, perc_99=0.15)
+        
+elif filtering == 'density':
+    afm = filter_density(afm, density=0.5, steps=np.Inf)
+    if min_cell_number > 0:
+        cell_counts = afm.obs.groupby('GBC').size()
+        clones_to_retain = cell_counts[cell_counts>min_cell_number].index 
+        cells_to_retain = afm.obs.query('GBC in @clones_to_retain').index
+        a = afm[cells_to_retain, :].copy()
 
-del ORIG
-
-afm, variants = format_matrix(orig, no_clones=True)
-
-filter_CV(afm, mean_coverage=100, n=50)
-filter_ludwig2019(afm, mean_coverage=100, mean_AF=0.5, mean_qual=0.2)
-filter_velten2021(afm, mean_coverage=100, mean_AF=0.1, min_cell_perc=0.2)
-filter_miller2022(afm, mean_coverage=100, mean_qual=0.3, perc_1=0.01, perc_99=0.1)
-filter_density(afm, density=0.7, steps=np.Inf)
-
-# Class
-a = filter_CV(afm, mean_coverage=100, n=100)
+a
 a = nans_as_zeros(a)
-X = a.X
+ncells = a.shape[0]
+n_clones_analyzed = len(a.obs['GBC'].unique())
 
-feature_names = a.var_names
-y = pd.Categorical(a.obs['sample'])
+# Viz cells x vars
+g = cells_vars_heatmap(a, covariate='GBC', palette_anno='dark', cmap='mako',
+    var_names=True, cell_names=False, cluster_cells=True, cluster_vars=True,
+    dendrogram_ratio=(.3, .04), colors_ratio=0.05, figsize=(11, 8), var_names_size=5,
+    cut_from_right=0.7, halign_title=0.47, position_cbar=(0.82, 0.2, 0.02, 0.25), 
+    title_legend='Clones', loc_legend='lower center', bbox_legend=(0.825, 0.5)
+)
 
-if len(y.categories) > 2:
-    Y = one_hot_from_labels(y)
-    # Here we go
-    DF = []
-    for i in range(Y.shape[1]):
-        comparison = f'{y.categories[i]}_vs_rest' 
-        y_ = Y[:, i]
-        df = classification(X, y_, feature_names, key='xgboost', GS=True, 
-            score='f1', n_combos=10, cores_model=8, cores_GS=1)
-        df = df.assign(comparison=comparison, feature_type='miller2022')          
-        df = df.loc[:,
-            ['feature_type', 'rank', 'evidence', 'evidence_type', 'effect_size', 'es_rescaled',
-            'effect_type', 'comparison']
-        ]
-        DF.append(df)
+# Viz cells x cells distances
 
-df = pd.concat(DF, axis=0)
-df['evidence'].describe()
+g = cells_vars_heatmap(a, covariate='GBC', palette_anno='dark', cmap='mako',
+    var_names=True, cell_names=False, cluster_cells=True, cluster_vars=True,
+    dendrogram_ratio=(.3, .04), colors_ratio=0.05, figsize=(11, 8), var_names_size=5,
+    cut_from_right=0.7, halign_title=0.47, position_cbar=(0.82, 0.2, 0.02, 0.25), 
+    title_legend='Clones', loc_legend='lower center', bbox_legend=(0.825, 0.5)
+)
 
-
+plt.show()
 
 
 
