@@ -10,6 +10,7 @@ import pandas as pd
 
 # Set paths
 path_main = sys.argv[1]
+path_main = '/Users/IEO5505/Desktop/MI_TO/'
 path_clones = path_main + '/results_and_plots/clones_classification/'
 path_samples = path_main + '/results_and_plots/samples_classification/'
 
@@ -27,10 +28,10 @@ for x in os.listdir(path_clones):
                 ['feature_type', 'comparison', 'evidence']
             ].drop_duplicates().assign(
                 sample=run_pars[0], min_cell_number=int(run_pars[2]), 
-                min_cov_treshold=int(run_pars[3]), model=run_pars[-1]
+                min_cov_treshold=int(run_pars[3]), model=run_pars[-1], analysis='_'.join(run_pars[:-1])
             ).rename(columns={'evidence':'f1'}).loc[:,
                 [ 
-                    'sample', 'feature_type', 'min_cov_treshold', 
+                    'analysis', 'sample', 'feature_type', 'min_cov_treshold', 
                     'min_cell_number', 'model', 'comparison', 'f1' 
                 ]
             ]
@@ -53,9 +54,9 @@ for x in os.listdir(path_samples):
             ).reset_index().loc[:, 
                 ['feature_type', 'comparison', 'evidence']
             ].drop_duplicates().assign( 
-                min_cov_treshold=int(run_pars[1]), model=run_pars[-1]
+                min_cov_treshold=int(run_pars[1]), model=run_pars[-1], analysis='_'.join(run_pars[:-1])
             ).rename(columns={'evidence':'f1'}).loc[:,
-                [ 'feature_type', 'min_cov_treshold', 'model', 'comparison', 'f1' ]
+                [ 'analysis', 'feature_type', 'min_cov_treshold', 'model', 'comparison', 'f1' ]
             ]
         res.append(df)
 
