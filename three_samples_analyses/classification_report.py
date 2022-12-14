@@ -3,6 +3,7 @@ Summary of classification performances.
 """
 
 # Code
+import re
 import os
 import sys
 import numpy as np
@@ -10,7 +11,6 @@ import pandas as pd
 
 # Set paths
 path_main = sys.argv[1]
-path_main = '/Users/IEO5505/Desktop/MI_TO/'
 path_clones = path_main + '/results_and_plots/clones_classification/'
 path_samples = path_main + '/results_and_plots/samples_classification/'
 
@@ -21,7 +21,7 @@ path_samples = path_main + '/results_and_plots/samples_classification/'
 # Clones
 res = []
 for x in os.listdir(path_clones):
-    if x.endswith('.xlsx'):
+    if x.endswith('.xlsx') and not bool(re.search('report', x)):
         run_pars = x.split('_')[1:-1]
         df = pd.read_excel(path_clones + x, index_col=0
             ).reset_index().loc[:, 
@@ -48,7 +48,7 @@ res.to_excel(path_clones + 'report_classification_clones.xlsx')
 # Samples
 res = []
 for x in os.listdir(path_samples):
-    if x.endswith('.xlsx'):
+    if x.endswith('.xlsx') and not bool(re.search('report', x)):
         run_pars = x.split('_')[1:-1]
         df = pd.read_excel(path_samples + x, index_col=0
             ).reset_index().loc[:, 
