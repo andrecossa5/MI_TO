@@ -171,7 +171,7 @@ def main():
             a = filter_miller2022(afm, mean_coverage=100, mean_qual=0.3, perc_1=0.01, perc_99=0.1)
 
     elif filtering == 'density':
-        afm = filter_density(afm, density=0.5, steps=np.Inf)
+        a = filter_density(afm, density=0.5, steps=np.Inf)
     
     # Format X and Y for classification
     a = nans_as_zeros(a)

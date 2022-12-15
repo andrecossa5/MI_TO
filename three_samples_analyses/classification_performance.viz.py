@@ -3,6 +3,7 @@ Visualization of clones and samples classification performances.
 """
 
 # Code
+import pickle
 import os
 from Cellula.plotting._plotting import *
 from Cellula.plotting._plotting_base import *
@@ -150,4 +151,27 @@ format_ax(clones, ax, title='f1-clone size correlation', xlabel='Clone size', yl
 # Save
 fig.tight_layout()
 fig.savefig(path_main + '/results_and_plots/classification_performance/clones_size_f1_corr.pdf')
+##############
+
+
+
+##
+
+
+############## 
+# For each sample (3x) clones, what are the top 3 analyses (median f1 score across clones)? 
+# Intersection among selected SNVs?? --> Take out from cluster
+
+# Save top3 for easy quering on the cluster
+# top_3 = {}
+# for sample in clones['sample'].unique():
+#     top_3[sample] = clones.query('sample == @sample').groupby(['analysis']).agg(
+#         {'f1':np.median}).sort_values(
+#         'f1', ascending=False).index[:3].to_list()
+# with open(path_clones + 'top3.pkl', 'wb') as f: 
+#     pickle.dump(top_3, f)
+
+# Load top3 variants for each sample, and visualize their intersection (i.e., J.I.), by sample
+
+
 ##############
