@@ -189,7 +189,7 @@ def main():
             a = filter_miller2022(afm, mean_coverage=100, mean_qual=0.3, perc_1=0.01, perc_99=0.1)
 
     elif filtering == 'density':
-        afm = filter_density(afm, density=0.5, steps=np.Inf)
+        a = filter_density(afm, density=0.5, steps=np.Inf)
         if min_cell_number > 0:
             cell_counts = afm.obs.groupby('GBC').size()
             clones_to_retain = cell_counts[cell_counts>min_cell_number].index 

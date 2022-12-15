@@ -5,7 +5,7 @@ Module to preprocess AFMs: reformat original AFM; filter variants/cells.
 import sys
 import gc
 import re
-from logging import getLogger
+import logging
 import numpy as np
 import pandas as pd
 import scanpy as sc

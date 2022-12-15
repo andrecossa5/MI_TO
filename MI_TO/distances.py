@@ -6,6 +6,7 @@ import numpy as np
 import pandas as pd
 import scanpy as sc
 from numba import njit
+from scipy.spatial.distance import pdist
 
 from Cellula._utils import Timer
 
@@ -13,23 +14,25 @@ from Cellula._utils import Timer
 ##
 
 
-def sqeuclidean_(x, y):
+@njit(fastmath=True)
+def sqeuclidean_(X):
     """
     Squared euclidean distance.
     """
-    result = np.sum((x - y) ** 2)
-    return result
+    # result = np.sum((x - y) ** 2)
+    return D
 
 
 ##
 
 
-def euclidean(x, y):
+@njit(fastmath=True)
+def euclidean(X):
     """
     Standard euclidean distance.
     """
-    result = np.sum((x - y) ** 2)
-    return np.sqrt(result)
+    #result = np.sum((x - y) ** 2)
+    return D
 
 
 ##

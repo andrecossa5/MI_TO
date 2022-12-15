@@ -17,7 +17,7 @@ path_main = '/Users/IEO5505/Desktop/MI_TO/'
 path_data = path_main + 'data/'
 path_results = path_main + 'results_and_plots/viz_clones/'
 sample = 'MDA'
-filtering = 'ludwig2019'
+filtering = 'miller2022'
 min_cov_treshold = 30
 min_cell_number = 10
 
@@ -69,6 +69,7 @@ g = cells_vars_heatmap(a, covariate='GBC', palette_anno='dark', cmap='mako',
     cut_from_right=0.7, halign_title=0.47, position_cbar=(0.82, 0.2, 0.02, 0.25), 
     title_legend='Clones', loc_legend='lower center', bbox_legend=(0.825, 0.5)
 )
+
 
 # Viz cells x cells distances
 
