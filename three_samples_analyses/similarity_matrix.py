@@ -42,8 +42,8 @@ my_parser.add_argument(
 my_parser.add_argument(
     '--filtering', 
     type=str,
-    default='ludwig2019',
-    help='Method to filter MT-SNVs. Default: ludwig2019.'
+    default='miller2022',
+    help='Method to filter MT-SNVs. Default: miller2022.'
 )
 
 # metric
@@ -86,11 +86,12 @@ my_parser.add_argument(
     help='Transform some distance metric with some kernel. Default: None'
 )
 
-# Skip
+# Retain nans
 my_parser.add_argument(
     '--retain_nans', 
-    action='store_true',
-    help='Retain nans as missing values, and vot zeroes. Default" False',
+    type=str,
+    default='no',
+    help='Retain nans. Default no.'
 )
 
 # Skip
@@ -195,7 +196,7 @@ def main():
             a = afm[cells_to_retain, :].copy()
     
     # Format afm for D computation
-    if not retain_nans:
+    if retain_nans == 'no':
         a = nans_as_zeros(a)
         logger.info('Convert nans into zeros...')
     else:
@@ -210,7 +211,7 @@ def main():
     # Calculate distance matrix
     t.start()
     logger.info('Begin pairwise distances calculations...')
-    D = pair_d(a.X, metric=metric, ncores=ncores, nans=retain_nans)
+    D = pair_d(a.X, metric=metric, ncores=ncores, nans=True if retain_nans == 'yes' else False)
     logger.info(f'Finished with distances: {t.stop()} s.')
 
     # Save as .h5ad adata object
