@@ -127,7 +127,6 @@ if not args.skip:
     #-----------------------------------------------------------------#
 
     # Set other paths
-    path_main = '/Users/IEO5505/Desktop/MI_TO/'
     path_data = path_main + '/data/'
     path_results = path_main + '/results_and_plots/distances/'
     path_runs = path_main + '/runs/'
@@ -149,7 +148,7 @@ def main():
     t = Timer()
     t.start()
 
-    logger.info(f'Execute classification: --sample {sample} --filtering {filtering} --metric {metric} --kernel {kernel} --retain_nans {retain_nans} --min_cell_number {min_cell_number} --min_cov_treshold {min_cov_treshold}')
+    logger.info(f'Execute pairwise distances calculations: --sample {sample} --filtering {filtering} --metric {metric} --kernel {kernel} --retain_nans {retain_nans} --min_cell_number {min_cell_number} --min_cov_treshold {min_cov_treshold}')
 
     # Read data
     orig = sc.read(path_data + f'/AFMs/{sample}_afm.h5ad')
