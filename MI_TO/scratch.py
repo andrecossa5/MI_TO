@@ -57,30 +57,199 @@ elif filtering == 'density':
         cells_to_retain = afm.obs.query('GBC in @clones_to_retain').index
         a = afm[cells_to_retain, :].copy()
 
-a
-a = nans_as_zeros(a)
-ncells = a.shape[0]
-n_clones_analyzed = len(a.obs['GBC'].unique())
-
-# Viz cells x vars
-g = cells_vars_heatmap(a, covariate='GBC', palette_anno='dark', cmap='mako',
-    var_names=True, cell_names=False, cluster_cells=True, cluster_vars=True,
-    dendrogram_ratio=(.3, .04), colors_ratio=0.05, figsize=(11, 8), var_names_size=5,
-    cut_from_right=0.7, halign_title=0.47, position_cbar=(0.82, 0.2, 0.02, 0.25), 
-    title_legend='Clones', loc_legend='lower center', bbox_legend=(0.825, 0.5)
-)
 
 
-# Viz cells x cells distances
 
-g = cells_vars_heatmap(a, covariate='GBC', palette_anno='dark', cmap='mako',
-    var_names=True, cell_names=False, cluster_cells=True, cluster_vars=True,
-    dendrogram_ratio=(.3, .04), colors_ratio=0.05, figsize=(11, 8), var_names_size=5,
-    cut_from_right=0.7, halign_title=0.47, position_cbar=(0.82, 0.2, 0.02, 0.25), 
-    title_legend='Clones', loc_legend='lower center', bbox_legend=(0.825, 0.5)
-)
+# Nans robust primitives
 
-plt.show()
+
+# def euclidean_python_nans(x, y):
+#     result = 0.0
+#     for i in range(x.shape[0]):
+#         if (~np.isnan(x[i])) and (~np.isnan(y[i])):
+#             result += (x[i] - y[i]) ** 2
+#     return np.sqrt(result)
+
+# @njit(fastmath=True, parallel=True)
+# def euclidean_pynn_nans(x, y):
+#     result = 0.0
+#     for i in prange(x.shape[0]):
+#         if (~np.isnan(x[i])) and (~np.isnan(y[i])):
+#             result += (x[i] - y[i]) ** 2
+#     return np.sqrt(result)
+
+# def test_primitive(f, size=10000, n_times=1000, nans=False):
+#     """
+#     Test a primitive function making a d(x,y) calculations n_times among two size sized 
+#     vectors, with or without a 0.5 ratio on nans.
+#     """
+#     np.random.seed(1234)
+#     x = np.random.random(size)
+#     np.random.seed(1453)
+#     y = np.random.random(size)
+# 
+#     t = Timer()
+#     t.start()
+# 
+#     for _ in range(n_times):
+#         d = f(x, y)
+# 
+#     print(f'Size: {size}; n_times: {n_times}; Execution: {t.stop():.3f} s')
+
+
+
+def euclidean_nans(x, y):
+    ix = np.where(~np.isnan(x))[0]
+    iy = np.where(~np.isnan(y))[0]
+    idx = list(set(ix) & set(iy))
+    x_ = x[idx]
+    y_ = y[idx]
+    return euclidean_std(x_, y_)
+
+def sqeuclidean_nans(x, y):
+    ix = np.where(~np.isnan(x))[0]
+    iy = np.where(~np.isnan(y))[0]
+    idx = list(set(ix) & set(iy))
+    x_ = x[idx]
+    y_ = y[idx]
+    return sqeuclidean(x_, y_)
+
+def correlation_nans(x, y):
+    ix = np.where(~np.isnan(x))[0]
+    iy = np.where(~np.isnan(y))[0]
+    idx = list(set(ix) & set(iy))
+    x_ = x[idx]
+    y_ = y[idx]
+    return correlation(x_, y_)
+
+def cosine_nans(x, y):
+    ix = np.where(~np.isnan(x))[0]
+    iy = np.where(~np.isnan(y))[0]
+    idx = list(set(ix) & set(iy))
+    x_ = x[idx]
+    y_ = y[idx]
+    return cosine(x_, y_)
+
+
+##
+
+
+x = np.linspace(0, 1, 100)
+x[np.random.randint(0, 100, size=10)] = np.nan
+y = np.linspace(2, 3, 100)
+y[np.random.randint(0, 100, size=10)] = np.nan
+
+cosine_nans(x, y)
+
+
+##
+
+
+def pair_d(X, **kwargs):
+    """
+    Function for calculating pairwise distances within the row vectors of a matrix X.
+    """
+    # Get kwargs
+    try:
+        metric = kwargs['metric']
+    except:
+        metric = 'euclidean'
+    try:
+        ncores = kwargs['ncores']
+    except:
+        ncores = 8
+    try:
+        nans = kwargs['nans']
+    except:
+        nans = False
+
+    print(f'pair_d arguments: metric={metric}, ncores={ncores}, nans={nans}')
+
+    # Compute D
+    if not nans:
+        D = pairwise_distances(X, metric=metric, n_jobs=ncores)
+    else:
+        print(f'Custom, nan-robust {metric} metric will be used here...')
+        if metric == 'euclidean':
+            D = pairwise_distances(X, metric=euclidean_nans, n_jobs=ncores, force_all_finite=False)
+        elif metric == 'sqeuclidean':
+            D = pairwise_distances(X, metric=sqeuclidean_nans, n_jobs=ncores, force_all_finite=False)
+        elif metric == 'correlation':
+            D = pairwise_distances(X, metric=correlation_nans, n_jobs=ncores, force_all_finite=False)
+        elif metric == 'cosine':
+            D = pairwise_distances(X, metric=cosine_nans, n_jobs=ncores, force_all_finite=False)
+
+    return D
+
+##
+
+def test_matrix(f, rows=1000, cols=100, **kwargs):
+    """
+    Test a primitive function making a d(x,y) calculations n_times among two size sized 
+    vectors, with or without a 0.5 ratio on nans.
+    """
+    np.random.seed(1234)
+    X = np.random.rand(rows, cols)
+
+    if kwargs['nans']:
+        np.random.seed(1234)
+        rows_idx = np.random.randint(0, rows, size=rows//2)
+        np.random.seed(1234)
+        cols_idx = np.random.randint(0, cols, size=cols//2)
+        X[np.ix_(rows_idx, cols_idx)] = np.nan
+
+    t = Timer()
+    t.start()
+
+    D = f(X, **kwargs)
+
+    print(f'Size: {rows * cols}; nrows {rows}; ncols {cols}; Execution: {t.stop():.3f} s')
+
+
+##
+
+
+test_matrix(pair_d, rows=10000, cols=1000, metric='euclidean', nans=False)
+test_matrix(pair_d, rows=10000, cols=1000, metric='euclidean', nans=True)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

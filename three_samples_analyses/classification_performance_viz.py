@@ -20,12 +20,18 @@ path_samples = path_main + '/results_and_plots/samples_classification/'
 clones = pd.read_excel(path_clones + 'report_classification_clones.xlsx', index_col=0)
 samples = pd.read_excel(path_samples + 'report_classification_samples.xlsx', index_col=0)
 
+# Re-format analysis
+clones['analysis'] += '_' + clones['model']
+samples['analysis'] += '_' + samples['model']
+
 
 ##
 
 
 ############## Median f1 by comparision and task
 fig, ax = plt.subplots(figsize=(8,8))
+
+np.random.seed(123)
 
 clones_agg = clones.groupby('comparison').agg({'f1' : np.median}).assign(task='Clones')
 samples_agg = samples.groupby('comparison').agg({'f1' : np.median}).assign(task='Samples')
@@ -45,14 +51,14 @@ ax.text(0.42, 0.16, f'-Median f1-scores for clones (samples):', transform=ax.tra
 ax.text(0.42, 0.13, f' {np.median(clones["f1"]):.3f} ({clones["f1"].size} values across all analyses)', transform=ax.transAxes)
 ax.text(0.42, 0.10, f' {np.median(samples["f1"]):.3f} ({samples["f1"].size} values across all analyses)', transform=ax.transAxes)
 
-ax.text(0.72, 0.92, 'PDX', transform=ax.transAxes)
-ax.text(0.73, 0.6, 'AML', transform=ax.transAxes)
-ax.text(0.72, 0.52, 'MDA', transform=ax.transAxes)
+ax.text(1, np.median(samples.query('comparison == "PDX_vs_rest"')['f1']), 'PDX') 
+ax.text(0.85, np.median(samples.query('comparison == "MDA_vs_rest"')['f1']), 'MDA')
+ax.text(1.08, np.median(samples.query('comparison == "AML_vs_rest"')['f1']), 'AML')
 
 top_3_clones = clones_agg.sort_values('f1', ascending=False).head(3)
-ax.text(0.1, 0.72, 'CGCCGAACAGCTTCAGTG', transform=ax.transAxes)
-ax.text(0.1, 0.41, 'TCCCTGGAGTCTTCGAAC', transform=ax.transAxes)
-ax.text(0.05, 0.22, 'CTCCTCCGCGGCGAAACG', transform=ax.transAxes)
+ax.text(-0.4, np.median(clones.query('comparison == "CGCCGAACAGCTTCAGTG_vs_rest"')['f1']) + 0.02, 'CGCCGAACAGCTTCAGTG')
+ax.text(-0.4, np.median(clones.query('comparison == "TCCCTGGAGTCTTCGAAC_vs_rest"')['f1']) + 0.04, 'TCCCTGGAGTCTTCGAAC')
+ax.text(-0.4, np.median(clones.query('comparison == "CTCCTCCGCGGCGAAACG_vs_rest"')['f1']) - 0.06, 'CTCCTCCGCGGCGAAACG')
 
 # Save
 fig.savefig(path_main + '/results_and_plots/classification_performance/median_f1_by_task.pdf')
@@ -73,7 +79,7 @@ format_ax(clones, ax, title='f1-scores by clone and variant selection method', r
 create_handles(feat_type_colors.keys(), marker='o', colors=None, size=10, width=0.5)
 handles = create_handles(feat_type_colors.keys(), colors=feat_type_colors.values())
 fig.legend(handles, feat_type_colors.keys(), loc='upper right', 
-    bbox_to_anchor=(0.9, 0.9), ncol=2, frameon=False, title='Features (SNVs) selection method'
+    bbox_to_anchor=(0.9, 0.9), ncol=2, frameon=False, title='Feature selection'
 )
 
 v = 0.8
@@ -96,22 +102,47 @@ fig.savefig(path_main + '/results_and_plots/classification_performance/clones_f1
 
 
 ############## f1 by sample and feat_type
-fig, ax = plt.subplots(figsize=(8, 5))
+fig, ax = plt.subplots(figsize=(8, 6.8))
 
 strip(clones, 'sample', 'f1', by='feature_type', c=feat_type_colors, s=5, ax=ax)
-format_ax(clones, ax, title='f1-scores by sample and variant selection method')
+box(clones, 'sample', 'f1', c='grey', ax=ax, s=0.3, a=0.001)
+format_ax(clones, ax, title='Clones f1-scores by sample and variant selection method')
 create_handles(feat_type_colors.keys(), marker='o', colors=None, size=10, width=0.5)
 handles = create_handles(feat_type_colors.keys(), colors=feat_type_colors.values())
-fig.legend(handles, feat_type_colors.keys(), loc='upper right', 
-    bbox_to_anchor=(0.95, 0.9), ncol=1, frameon=False, title='Features (SNVs) selection method'
+fig.legend(handles, feat_type_colors.keys(), loc='center', 
+    bbox_to_anchor=(0.8, 0.65), ncol=1, frameon=False, title='Feature selection'
 )
-ax.text(0.63, 0.6, f'Mean f1 clones MDA: {clones.loc[clones["sample"]=="AML"]["f1"].mean():.3f}', transform=ax.transAxes)
-ax.text(0.63, 0.55, f'Mean f1 clones AML: {clones.loc[clones["sample"]=="MDA"]["f1"].mean():.3f}', transform=ax.transAxes)
-ax.text(0.63, 0.5, f'Mean f1 clones PDX: {clones.loc[clones["sample"]=="PDX"]["f1"].mean():.3f}', transform=ax.transAxes)
+ax.text(0.7, 0.5, f'Mean f1 clones MDA: {clones.loc[clones["sample"]=="AML"]["f1"].mean():.3f}', transform=ax.transAxes)
+ax.text(0.7, 0.47, f'Mean f1 clones AML: {clones.loc[clones["sample"]=="MDA"]["f1"].mean():.3f}', transform=ax.transAxes)
+ax.text(0.7, 0.44, f'Mean f1 clones PDX: {clones.loc[clones["sample"]=="PDX"]["f1"].mean():.3f}', transform=ax.transAxes)
 
 # Save
 fig.tight_layout()
 fig.savefig(path_main + '/results_and_plots/classification_performance/clones_f1_by_sample.pdf')
+##############
+
+
+##
+
+
+
+############## f1 by model and feat_type
+fig, ax = plt.subplots(figsize=(8, 6.5))
+
+strip(clones, 'model', 'f1', by='feature_type', c=feat_type_colors, s=5, ax=ax)
+box(clones, 'model', 'f1', c='grey', ax=ax, s=0.3, a=0.001)
+format_ax(clones, ax, title='Clones f1-scores by model and variant selection method')
+create_handles(feat_type_colors.keys(), marker='o', colors=None, size=10, width=0.5)
+handles = create_handles(feat_type_colors.keys(), colors=feat_type_colors.values())
+fig.legend(handles, feat_type_colors.keys(), loc='center', 
+    bbox_to_anchor=(0.5, 0.6), ncol=1, frameon=False, title='Feature selection'
+)
+ax.text(0.35, 0.45, f'Mean f1 clones xgboost: {clones.loc[clones["model"]=="xgboost"]["f1"].mean():.3f}', transform=ax.transAxes)
+ax.text(0.35, 0.42, f'Mean f1 clones logit: {clones.loc[clones["model"]=="logit"]["f1"].mean():.3f}', transform=ax.transAxes)
+
+# Save
+fig.tight_layout()
+fig.savefig(path_main + '/results_and_plots/classification_performance/clones_f1_by_model.pdf')
 ##############
 
 
@@ -163,15 +194,43 @@ fig.savefig(path_main + '/results_and_plots/classification_performance/clones_si
 # Intersection among selected SNVs?? --> Take out from cluster
 
 # Save top3 for easy quering on the cluster
-# top_3 = {}
-# for sample in clones['sample'].unique():
-#     top_3[sample] = clones.query('sample == @sample').groupby(['analysis']).agg(
-#         {'f1':np.median}).sort_values(
-#         'f1', ascending=False).index[:3].to_list()
-# with open(path_clones + 'top3.pkl', 'wb') as f: 
-#     pickle.dump(top_3, f)
+top_3 = {}
+for sample in clones['sample'].unique():
+    top_3[sample] = clones.query('sample == @sample').groupby(['analysis']).agg(
+        {'f1':np.median}).sort_values(
+        'f1', ascending=False).index[:3].to_list()
+top_3
 
-# Load top3 variants for each sample, and visualize their intersection (i.e., J.I.), by sample
+# Load top3 variants for each sample clones, and visualize their intersection (i.e., J.I.), by sample
+D = {}
+for sample in os.listdir(path_clones + 'top3_analysis/'):
+    var_dict = {}
+    for x in os.listdir(path_clones + f'top3_analysis/{sample}/'):
+        n = '_'.join(x.split('.')[0].split('_')[2:-1])
+        df_ = pd.read_excel(path_clones + f'top3_analysis/{sample}/{x}', index_col=0)
+        var_dict[n] = df_.index.to_list()
+    D[sample] = var_dict
 
+# Sample a
+fig, axs = plt.subplots(1, 3, figsize=(10,5))
+
+for k, sample in enumerate(D):
+    n_analysis = len(D[sample].keys())
+    JI = np.zeros((n_analysis, n_analysis))
+    for i, l1 in enumerate(D[sample]):
+        for j, l2 in enumerate(D[sample]):
+            x = D[sample][l1]
+            y = D[sample][l2]
+            JI[i, j] = ji(x, y)
+    JI = pd.DataFrame(data=JI, index=None, columns=D[sample].keys())
+
+    plot_heatmap(JI, palette='mako', ax=axs[k], title=sample, y_names=False,
+        x_names_size=10, y_names_size=0, annot=True, annot_size=10, cb=True, label='JI variants'
+    )
+
+fig.tight_layout()
+
+
+fig.savefig(path_main + '/results_and_plots/classification_performance/overalp_selected_vars.pdf')
 
 ##############

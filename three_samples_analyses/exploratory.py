@@ -20,12 +20,12 @@ matplotlib.use('MacOSX')
 
 # Read data
 path_main = '/Users/IEO5505/Desktop/MI_TO/'
-path_results = path_main + 'results_and_plots/three_samples/exploratory/'
+path_results = path_main + 'results_and_plots/exploratory/'
 
 ORIG = {}
 AFMs = {}
 
-samples = ['MDA_clones', 'AML_clones', 'PDX']
+samples = ['MDA', 'AML', 'PDX']
 for x in samples:
     orig = sc.read(path_main + f'data/AFMs/{x}_afm.h5ad')
     CBC_GBC = pd.read_csv(path_main + f'data/CBC_GBC_cells/CBC_GBC_{x}.csv', index_col=0)
@@ -35,7 +35,7 @@ for x in samples:
     ORIG[x] = orig
 
 # Set colors
-colors = {'MDA_clones':'#DA5700', 'AML_clones':'#0074DA', 'PDX':'#0F9221'}
+colors = {'MDA':'#DA5700', 'AML':'#0074DA', 'PDX':'#0F9221'}
 
 ##
 
