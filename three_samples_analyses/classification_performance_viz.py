@@ -21,6 +21,7 @@ from MI_TO.utils import *
 
 # Set paths
 path_main = sys.argv[1]
+#path_main = '/Users/IEO5505/Desktop/MI_TO/'
 sample_names = ['MDA', 'PDX', 'AML']
 
 path_clones = path_main + '/results_and_plots/clones_classification/'
@@ -275,7 +276,6 @@ for sample in sample_names:
 
     # For all top3 analysis of that sample...:
     for analysis in top3_sample_variants[sample]:
-        print(analysis)
         a_ = analysis.split('_')[:-1]
         filtering = a_[0]  
         min_cell_number = int(a_[1])
@@ -384,7 +384,7 @@ for sample in sample_names:
                         heat_label='Similarity', legend_label='Clone', figsize=(11, 6.5), 
                         title=heat_title
                     )
-                pdf.savefig() 
+                    pdf.savefig() 
 
             plt.close()
 ############## 
@@ -394,45 +394,96 @@ for sample in sample_names:
 
 
 ############## 
-# For each sample (3x) clones, what are the clones which are consistently predictable in the top analyses? 
-top_clones = {}
-for sample in clones['sample'].unique():
-    top = top_3[sample]
-    top_clones[sample] = clones.query('sample == @sample and analysis in @top').groupby(['comparison']).agg(
-        {'f1':np.median}).sort_values(
-        'f1', ascending=False).query('f1 > 0.5').index.to_list()
-print(f'Top clones: {top_clones}')
+# For each sample top3 analysis on the clone task, what is the number of selected variants?
 
-# Load top3 analyses variants for each sample, and visualize their intersection (i.e., J.I.)
-D = {}
-for sample in sample_names:
-    var_dict = {}
-    for x in os.listdir(path_results + f'top_3/{sample}/'):
-        if x.endswith('.xlsx'):
-            n = '_'.join(x.split('.')[0].split('_')[2:-1])
-            df_ = pd.read_excel(path_results + f'top_3/{sample}/{x}', index_col=0)
+d = {}
+for sample in  top3_sample_variants:
+    n_vars = {}
+    for analysis in top3_sample_variants[sample]:
+        n_vars[analysis] = len(top3_sample_variants[sample][analysis])
+    d[sample] = n_vars
+df_ = pd.DataFrame(d).reset_index().rename(columns={'index':'analysis'}).melt(
+    id_vars='analysis', var_name='sample', value_name='n_vars').dropna()
 
-            df_ = df_.loc[df_['comparison'].str.contains('|'.join(top_clones[sample]))]
-            var_dict[n] = df_.index.to_list()
-    D[sample] = var_dict
-
-# Sample a
-fig, axs = plt.subplots(1, 3, figsize=(10,5))
-
-for k, sample in enumerate(D):
-    n_analysis = len(D[sample].keys())
-    JI = np.zeros((n_analysis, n_analysis))
-    for i, l1 in enumerate(D[sample]):
-        for j, l2 in enumerate(D[sample]):
-            x = D[sample][l1]
-            y = D[sample][l2]
-            JI[i, j] = ji(x, y)
-    JI = pd.DataFrame(data=JI, index=None, columns=D[sample].keys())
-
-    plot_heatmap(JI, palette='mako', ax=axs[k], title=sample, y_names=False,
-        x_names_size=10, y_names_size=0, annot=True, annot_size=10, cb=True, label='JI variants'
-    )
-
+# Viz 
+colors = {'MDA':'#DA5700', 'PDX':'#0F9221', 'AML':'#0074DA'}
+fig, ax = plt.subplots(figsize=(6,7))
+bar(df_, 'n_vars', x=None, by='sample', c=colors, ax=ax, s=0.75, annot_size=10)
+format_ax(df_, ax=ax, xticks=df_['analysis'], rotx=90, 
+    ylabel='n variants', title='n variants selected by the top 3 analyses of each sample'
+)
+handles = create_handles(colors.keys(), marker='o', colors=colors.values(), size=10, width=0.5)
+ax.legend(handles, colors.keys(), title='Sample', loc='upper right', 
+    bbox_to_anchor=(0.95, 0.95), ncol=1, frameon=False
+)
 fig.tight_layout()
-fig.savefig(path_results + 'overlap_selected_vars_only_top_clones.pdf')
+fig.savefig(path_results + 'n_top3_selected_variants.pdf')
+################
+
+
+##
+
+
+############## 
+# For each sample (3x) clones, what are the clones that are consistently predictable in the top analyses? 
+# top_clones = {}
+# for sample in clones['sample'].unique():
+#     top = top_3[sample]
+#     top_clones[sample] = clones.query('sample == @sample and analysis in @top').groupby(['comparison']).agg(
+#         {'f1':np.median}).sort_values(
+#         'f1', ascending=False).query('f1 > 0.5').index.to_list()
+# print(f'Top clones: {top_clones}')
+# 
+# 
+# 
+# afm = read_one_sample(path_main, sample='MDA')
+# 
+# stats = {}
+# for topper in top_clones['MDA']:
+#     ncells = {}
+#     topper = top_clones['MDA'][1].split('_')[0]
+#     np.sum(afm.obs['GBC'] == topper)
+# 
+# afm.X[np.isnan(afm.X)] = 0
+
+
+
+
+
+
+# n cells, of all clones and the one that is good
+
+
+
+
+# Median coverage and AF for all muts, selected in the analysis and top5 ranked for feature importance, 
+# Clone cells vs all the others
+
+
+
+
+# VAF profile of all muts, selected in the analysis and top5 ranked for feature importance across all cells
+
+
+
+# Feature importance of top10 muts
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# fig.tight_layout()
+# fig.savefig(path_results + 'top_clones_features.pdf')
 ################

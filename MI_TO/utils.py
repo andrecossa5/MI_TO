@@ -17,13 +17,13 @@ def summary_stats_vars(afm, variants=None):
     """
     if variants is not None:
         test = afm.var_names.isin(variants)
-        median_vafs = np.median(afm[:, test].X, axis=0)
-        median_coverage_var = np.median(afm[:, test].layers['coverage'], axis=0)
+        median_vafs = np.nanmedian(afm[:, test].X, axis=0)
+        median_coverage_var = np.nanmedian(afm[:, test].layers['coverage'], axis=0)
         fr_positives = np.sum(afm[:, test].X > 0, axis=0) / afm.shape[0]
         var_names = afm.var_names[test]
     else:
-        median_vafs = np.median(afm.X, axis=0)
-        median_coverage_var = np.median(afm.layers['coverage'], axis=0)
+        median_vafs = np.nanmedian(afm.X, axis=0)
+        median_coverage_var = np.nanmedian(afm.layers['coverage'], axis=0)
         fr_positives = np.sum(afm.X > 0, axis=0) / afm.shape[0]
         var_names = afm.var_names
 
