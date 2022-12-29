@@ -20,15 +20,18 @@ def create_one_base_tables(A, base):
     Create a full cell x variant AFM from the original maegatk output, and one of the 4 bases,
     create the allelic frequency df for that base, a cell x {pos}_{base} table.
     '''
-    X = np.array((A.layers[f'{base}_counts_fw'] + A.layers[f'{base}_counts_rev']) / A.layers['coverage'])
+    cov = A.layers[f'{base}_counts_fw'].toarray() + A.layers[f'{base}_counts_rev'].toarray()
+    X = cov / A.layers['coverage'].toarray()
     q = A.layers[f'{base}_qual_fw'] + A.layers[f'{base}_qual_rev']
     m = np.where(A.layers[f'{base}_qual_fw'].toarray() > 0, 1, 0) + np.where(A.layers[f'{base}_qual_rev'].toarray() > 0, 1, 0)
     qual = q.toarray() / m
+
+    df_cov = pd.DataFrame(data=cov, index=A.obs_names, columns=[ f'{pos}_{base}' for pos in range(A.shape[1]) ])
     df_x = pd.DataFrame(data=X, index=A.obs_names, columns=[ f'{pos}_{base}' for pos in range(A.shape[1]) ])
     df_qual = pd.DataFrame(data=qual, index=A.obs_names, columns=[ f'{pos}_{base}' for pos in range(A.shape[1]) ])
     gc.collect()
 
-    return df_x, df_qual
+    return df_cov, df_x, df_qual
 
 
 ##
@@ -52,10 +55,10 @@ def format_matrix(A, cbc_gbc_df=None, no_clones=False):
     ref_features = A.var.reset_index().loc[:, ['index', 'refAllele']].agg('_'.join, axis=1).tolist()
 
     # For each position and cell, compute each base AF and quality tables
-    A_x, A_qual = create_one_base_tables(A, 'A')
-    C_x, C_qual = create_one_base_tables(A, 'C')
-    T_x, T_qual = create_one_base_tables(A, 'T')
-    G_x, G_qual = create_one_base_tables(A, 'G')
+    A_cov, A_x, A_qual = create_one_base_tables(A, 'A')
+    C_cov, C_x, C_qual = create_one_base_tables(A, 'C')
+    T_cov, T_x, T_qual = create_one_base_tables(A, 'T')
+    G_cov, G_x, G_qual = create_one_base_tables(A, 'G')
 
     # Create a base quality layer, at each site
     quality = np.zeros(A.shape)
@@ -76,6 +79,7 @@ def format_matrix(A, cbc_gbc_df=None, no_clones=False):
     afm.var_names = all_features
     afm.uns['per_position_coverage'] = A.layers['coverage'].toarray()
     afm.uns['per_position_quality'] = quality # nans matained, NB
+    afm.layers['coverage'] = np.zeros((len(A.obs_names), len(all_features)))
     afm.layers['quality'] = np.zeros((len(A.obs_names), len(all_features)))
 
     # Fill afm and store variants names
@@ -83,15 +87,19 @@ def format_matrix(A, cbc_gbc_df=None, no_clones=False):
     for i, x in enumerate(afm.var_names):
         if x.endswith('A'):
             afm[:, x].X = A_x.loc[:, x].values
+            afm.layers['coverage'][:, i] = A_cov.loc[:, x].values
             afm.layers['quality'][:, i] = A_qual.loc[:, x].values
         elif x.endswith('C'):
             afm[:, x].X = C_x.loc[:, x].values
+            afm.layers['coverage'][:, i] = C_cov.loc[:, x].values
             afm.layers['quality'][:, i] = C_qual.loc[:, x].values
         elif x.endswith('T'):
             afm[:, x].X = T_x.loc[:, x].values
+            afm.layers['coverage'][:, i] = T_cov.loc[:, x].values
             afm.layers['quality'][:, i] = T_qual.loc[:, x].values
         elif x.endswith('G'):
             afm[:, x].X = G_x.loc[:, x].values
+            afm.layers['coverage'][:, i] = G_cov.loc[:, x].values
             afm.layers['quality'][:, i] = G_qual.loc[:, x].values
         else:
             print('N found. I am not adding anything')
@@ -103,6 +111,42 @@ def format_matrix(A, cbc_gbc_df=None, no_clones=False):
     gc.collect()
     
     return afm_variants, variants
+
+
+##
+
+
+def read_one_sample(path_main, sample=None):
+    """
+    Read and format one sample AFM.
+    """
+    orig = sc.read(path_main + f'data/AFMs/{sample}_afm.h5ad')
+    CBC_GBC = pd.read_csv(path_main + f'data/CBC_GBC_cells/CBC_GBC_{sample}.csv', index_col=0)
+    afm, variants = format_matrix(orig, CBC_GBC)
+    afm.obs = afm.obs.assign(sample=sample)
+
+    return afm
+
+
+##
+
+
+def read_all_samples(path_main, sample_list=None):
+    """
+    Read and format all samples AFMs. 
+    """
+    ORIG = {}
+    for sample in sample_list:
+        orig = sc.read(path_main + f'data/AFMs/{sample}_afm.h5ad')
+        orig.obs = orig.obs.assign(sample=sample)
+        ORIG[sample] = orig
+        meta_vars = orig.var
+    orig = anndata.concat(ORIG.values(), axis=0)
+    orig.var = meta_vars
+    del ORIG
+    afm, variants = format_matrix(orig, no_clones=True)
+
+    return afm
 
 
 ##

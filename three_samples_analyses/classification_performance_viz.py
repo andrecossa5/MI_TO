@@ -8,7 +8,10 @@ import os
 from Cellula.plotting._plotting import *
 from Cellula.plotting._plotting_base import *
 from Cellula.plotting._colors import *
+from MI_TO.preprocessing import *
 from MI_TO.diagnostic_plots import sturges
+from MI_TO.heatmaps_plots import *
+from MI_TO.utils import *
 matplotlib.use('MacOSX')
 
 # Set paths
@@ -150,7 +153,6 @@ fig.savefig(path_main + '/results_and_plots/classification_performance/clones_f1
 
 
 ############## f1 by sample and feat_type
-
 # Sizes
 res = []
 for x in os.listdir(path_main + 'data/CBC_GBC_cells'):
@@ -199,15 +201,177 @@ for sample in clones['sample'].unique():
     top_3[sample] = clones.query('sample == @sample').groupby(['analysis']).agg(
         {'f1':np.median}).sort_values(
         'f1', ascending=False).index[:3].to_list()
-top_3
 
 # Load top3 variants for each sample clones, and visualize their intersection (i.e., J.I.), by sample
+D = {}
+for sample in os.listdir(path_clones + 'top3_analysis/'):
+    if sample != '.DS_Store':
+        var_dict = {}
+        for x in os.listdir(path_clones + f'top3_analysis/{sample}/'):
+            n = '_'.join(x.split('.')[0].split('_')[2:-1])
+            df_ = pd.read_excel(path_clones + f'top3_analysis/{sample}/{x}', index_col=0)
+            var_dict[n] = df_.index.unique().to_list()
+        D[sample] = var_dict
+
+# Sample a
+fig, axs = plt.subplots(1, 3, figsize=(10,5))
+
+for k, sample in enumerate(D):
+    n_analysis = len(D[sample].keys())
+    JI = np.zeros((n_analysis, n_analysis))
+    for i, l1 in enumerate(D[sample]):
+        for j, l2 in enumerate(D[sample]):
+            x = D[sample][l1]
+            y = D[sample][l2]
+            JI[i, j] = ji(x, y)
+    JI = pd.DataFrame(data=JI, index=None, columns=D[sample].keys())
+
+    plot_heatmap(JI, palette='mako', ax=axs[k], title=sample, y_names=False,
+        x_names_size=10, y_names_size=0, annot=True, annot_size=10, cb=True, label='JI variants'
+    )
+
+fig.tight_layout()
+fig.savefig(path_main + '/results_and_plots/classification_performance/overlap_selected_vars.pdf')
+##############
+
+
+##
+
+
+############## 
+# For each sample (3x) clones, what are the AF profiles of the variants selected?
+path_data = path_main + 'data/'
+path_results = path_main + '/results_and_plots/classification_performance/'
+
+# Here we go
+for sample in ['MDA', 'AML', 'PDX']:
+
+    if not os.path.exists(path_results + 'top_3'):
+        os.mkdir(path_results + 'top_3')
+    os.chdir(path_results + 'top_3')
+    
+    if not os.path.exists(path_results + f'top_3/{sample}'):
+        os.mkdir(sample)
+    os.chdir(sample)
+
+    # Read data
+    orig = sc.read(path_data + f'/AFMs/{sample}_afm.h5ad')
+    CBC_GBC = pd.read_csv(path_data + f'CBC_GBC_cells/CBC_GBC_{sample}.csv', index_col=0)
+
+    # Format variants AFM
+    afm, variants = format_matrix(orig, CBC_GBC)
+
+    # For all top3 analysis of that sample...:
+    for analysis in D[sample]:
+        a_ = analysis.split('_')[:-1]
+        filtering = a_[0]  
+        min_cell_number = int(a_[1])
+        min_cov_treshold = int(a_[2])
+
+        # Filter cells and vars
+        if filtering in ['CV', 'ludwig2019', 'velten2021', 'miller2022']:
+            # Cells
+            a_cells = filter_cells_coverage(afm, mean_coverage=min_cov_treshold) 
+            if min_cell_number > 0:
+                cell_counts = a_cells.obs.groupby('GBC').size()
+                clones_to_retain = cell_counts[cell_counts>min_cell_number].index 
+                cells_to_retain = a_cells.obs.query('GBC in @clones_to_retain').index
+                a_cells = a_cells[cells_to_retain, :].copy()
+            # Variants
+            if filtering == 'CV':
+                a = filter_CV(a_cells, n=50)
+            elif filtering == 'ludwig2019':
+                a = filter_ludwig2019(a_cells, mean_AF=0.5, mean_qual=0.2)
+            elif filtering == 'velten2021':
+                a = filter_velten2021(a_cells, mean_AF=0.1, min_cell_perc=0.2)
+            elif filtering == 'miller2022':
+                a = filter_miller2022(a_cells, mean_coverage=100, mean_qual=0.3, perc_1=0.01, perc_99=0.1)
+
+        elif filtering == 'density':
+            a = filter_density(afm, density=0.5, steps=np.Inf)
+            if min_cell_number > 0:
+                cell_counts = a.obs.groupby('GBC').size()
+                clones_to_retain = cell_counts[cell_counts>min_cell_number].index 
+                cells_to_retain = a.obs.query('GBC in @clones_to_retain').index
+                a = a[cells_to_retain, :].copy()
+
+        # Control vars...
+        print(analysis)
+        print(a)
+        assert all([ var in D[sample][analysis] for var in a.var_names ])
+
+        # Viz matrix cell x vars
+        if np.any(np.isnan(a.X)):
+            a.X[np.isnan(a.X)] = 0
+        g = cells_vars_heatmap(a, covariate='GBC', palette_anno='dark', cmap='magma', 
+            title = f'{sample} clones, {analysis}', title_legend='Clones', loc_legend='lower center', 
+            bbox_legend=(0.825, 0.5)
+        )
+        g.savefig(f'{analysis}_cell_x_vars_heatmap.pdf')
+
+        # Viz VAFs
+        fig, axs = plt.subplots(1, 2, figsize=(11, 5), constrained_layout=True)
+
+        # To nans
+        to_plot = a_cells.copy()
+        to_plot.X[np.isnan(to_plot.X)] = 0
+
+        # Vafs ditribution
+        for i, var in enumerate(a_cells.var_names):
+            x = to_plot.X[:, i]
+            x = np.sort(x)
+            if var in a.var_names:
+                axs[0].plot(x, '--', color='red', linewidth=0.5)
+            else:
+                axs[0].plot(x, '--', color='grey', linewidth=0.2)
+
+        colors = {'selected':'red', 'non-selected':'grey'}
+        format_ax(pd.DataFrame(x), ax=axs[0], title='Ranked AFs', xlabel='Cell rank', ylabel='AF')
+
+        # Vafs summary stats
+        df_ = summary_stats_vars(to_plot, variants=None).drop('median_coverage', axis=1).reset_index(
+            ).rename(columns={'index' : 'variant'}).assign(
+            is_selected=lambda x: np.where(x['variant'].isin(a.var_names), 'selected', 'non-selected')).melt(
+            id_vars=['variant', 'is_selected'], var_name='summary_stat')
+
+        violin(df_, 'summary_stat', 'value', by='is_selected', c=colors, ax=axs[1])
+        format_ax(df_, ax=axs[1], title='Summary statistics', 
+            xticks=df_['summary_stat'].unique(), xlabel='', ylabel='Value'
+        )
+        handles = create_handles(colors.keys(), marker='o', colors=colors.values(), size=10, width=0.5)
+        axs[1].legend(handles, colors.keys(), title='Selection', loc='center left', 
+            bbox_to_anchor=(1, 0.5), ncol=1, frameon=False
+        )
+        fig.suptitle(f'{sample}: analysis {analysis}')
+
+        # Save
+        fig.savefig(f'{analysis}_variants.pdf')
+############## 
+
+
+##
+
+
+############## 
+# For each sample (3x) clones, what are the clones which are consistently predictable in the top analyses? 
+top_clones = {}
+for sample in clones['sample'].unique():
+    top = top_3[sample]
+    top_clones[sample] = clones.query('sample == @sample and analysis in @top').groupby(['comparison']).agg(
+        {'f1':np.median}).sort_values(
+        'f1', ascending=False).query('f1 > 0.5').index.to_list()
+
+
+# Load top3 analyses variants for each sample, and visualize their intersection (i.e., J.I.)
 D = {}
 for sample in os.listdir(path_clones + 'top3_analysis/'):
     var_dict = {}
     for x in os.listdir(path_clones + f'top3_analysis/{sample}/'):
         n = '_'.join(x.split('.')[0].split('_')[2:-1])
         df_ = pd.read_excel(path_clones + f'top3_analysis/{sample}/{x}', index_col=0)
+
+        df_ = df_.loc[df_['comparison'].str.contains('|'.join(top_clones[sample]))]
+        df_.groupby('comparison').head()
         var_dict[n] = df_.index.to_list()
     D[sample] = var_dict
 
@@ -229,8 +393,5 @@ for k, sample in enumerate(D):
     )
 
 fig.tight_layout()
-
-
-fig.savefig(path_main + '/results_and_plots/classification_performance/overalp_selected_vars.pdf')
-
-##############
+fig.savefig(path_main + '/results_and_plots/classification_performance/overlap_selected_vars.pdf')
+################

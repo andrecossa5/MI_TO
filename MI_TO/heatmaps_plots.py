@@ -17,38 +17,83 @@ from Cellula.plotting._colors import *
 
 
 # Cells x vars AFMs
-def cells_vars_heatmap(afm, covariate='GBC', palette_anno='dark', cmap='mako',
-    var_names=True, cell_names=False, cluster_cells=True, cluster_vars=True,
-    dendrogram_ratio=(.3, .04), colors_ratio=0.05, figsize=(11, 8), var_names_size=5,
-    cut_from_right=0.7, halign_title=0.47, position_cbar=(0.82, 0.2, 0.02, 0.25), 
-    title_legend='Clones', loc_legend='lower center', bbox_legend=(0.825, 0.5)
-    ):
+def cells_vars_heatmap(afm, cell_anno=None, anno_colors=None, heat_label=None, 
+    legend_label=None, figsize=(11, 8), title=None, cbar_position=(0.82, 0.2, 0.02, 0.25),
+    title_hjust=0.47, legend_bbox_to_anchor=(0.825, 0.5), legend_loc='lower center', 
+    legend_ncol=1, xticks_size=5):
     """
     Given a (filtered) cells x vars AFM, produce its (clustered, or ordered) 
     annotated heatmap visualization.
     """
-    # Create annot colors
-    colors = create_palette(afm.obs, covariate, palette=palette_anno)
-    cells_anno = [ colors[x] for x in afm.obs[covariate] ]
-
-    # Viz 
     g = sns.clustermap(pd.DataFrame(data=afm.X, columns=afm.var_names), 
-        cmap=cmap, yticklabels=cell_names, xticklabels=var_names, 
-        dendrogram_ratio=dendrogram_ratio, figsize=figsize, row_cluster=cluster_cells, col_cluster=cluster_vars, 
-        annot=False, 
-        cbar_kws={'use_gridspec' : False, 'orientation' : 'vertical', 'label' : 'AFM'}, 
-        colors_ratio=colors_ratio, row_colors=cells_anno
+    cmap='viridis', yticklabels=False, xticklabels=True, 
+    dendrogram_ratio=(.3, .04), figsize=figsize, row_cluster=True, col_cluster=True, 
+    annot=False, cbar_kws={'use_gridspec' : False, 'orientation' : 'vertical', 'label' : heat_label}, 
+    colors_ratio=0.05, row_colors=cell_anno
     )
-
-    g.ax_heatmap.set_xticklabels(g.ax_heatmap.get_xmajorticklabels(), fontsize=var_names_size)
-    g.fig.subplots_adjust(right=cut_from_right)
+    g.ax_heatmap.set_xticklabels(g.ax_heatmap.get_xmajorticklabels(), fontsize=xticks_size)
+    g.fig.subplots_adjust(right=0.7)
     g.ax_col_dendrogram.set_visible(False) 
-    g.fig.suptitle('MDA_clones', x=halign_title)
-    g.ax_cbar.set_position(position_cbar)
+    if title is not None:
+        g.fig.suptitle(title, x=title_hjust)
+    g.ax_cbar.set_position(cbar_position)
 
-    handles = create_handles(colors.keys(), colors=colors.values())
-    g.fig.legend(handles, colors.keys(), loc=loc_legend, 
-        bbox_to_anchor=bbox_legend, ncol=1, frameon=False, title=title_legend
+    handles = create_handles(anno_colors.keys(), colors=anno_colors.values())
+    g.fig.legend(handles, anno_colors.keys(), loc=legend_loc, 
+        bbox_to_anchor=legend_bbox_to_anchor, ncol=legend_ncol, frameon=False, title=legend_label
     )
 
     return g
+
+
+##
+
+
+def cell_cell_dists_heatmap(D, cell_anno=None, anno_colors=None, heat_label=None, 
+    legend_label=None, figsize=(11, 6.5), title=None, cbar_position=(0.82, 0.2, 0.02, 0.25),
+    title_hjust=0.47, legend_bbox_to_anchor=(0.825, 0.5), legend_loc='lower center', 
+    legend_ncol=1):
+    """
+    Plot cell-to-cell similarity matrix.
+    """
+    g = sns.clustermap(pd.DataFrame(data=1-D.X, index=D.obs_names.to_list(), columns=D.obs_names.to_list()), 
+        cmap='viridis', yticklabels=False, xticklabels=False, 
+        dendrogram_ratio=(.3, .04), figsize=figsize, row_cluster=True, col_cluster=True, 
+        annot=False, cbar_kws={'use_gridspec' : False, 'orientation' : 'vertical', 'label' : heat_label}, 
+        colors_ratio=0.025, row_colors=cell_anno, col_colors=cell_anno
+    )
+    g.fig.subplots_adjust(right=0.7)
+    g.ax_col_dendrogram.set_visible(False) 
+    g.fig.suptitle(title, x=title_hjust)
+    g.ax_cbar.set_position(cbar_position)
+    handles = create_handles(anno_colors.keys(), colors=anno_colors.values())
+    g.fig.legend(handles, anno_colors.keys(), loc=legend_loc, 
+        bbox_to_anchor=legend_bbox_to_anchor, ncol=legend_ncol, frameon=False, title=legend_label
+    )
+
+    return g
+
+
+##
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
