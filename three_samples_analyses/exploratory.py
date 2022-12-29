@@ -3,6 +3,7 @@ Exploratory analysis and checks on the three original and formatted AFMs.
 """
 
 import os
+import sys
 import scanpy as sc
 import anndata
 from itertools import product
@@ -12,14 +13,13 @@ from Cellula.plotting._plotting_base import *
 from Cellula.plotting._colors import *
 from MI_TO.preprocessing import *
 from MI_TO.diagnostic_plots import *
-matplotlib.use('MacOSX')
 
 
 ##
 
 
 # Read data
-path_main = '/Users/IEO5505/Desktop/MI_TO/'
+path_main = sys.argv[1]
 path_results = path_main + 'results_and_plots/exploratory/'
 
 ORIG = {}
