@@ -4,7 +4,9 @@ Visualization of clones and samples classification performances.
 
 # Code
 import pickle
+import re
 import os
+import sys
 from Cellula.plotting._plotting import *
 from Cellula.plotting._plotting_base import *
 from Cellula.plotting._colors import *
@@ -12,12 +14,18 @@ from MI_TO.preprocessing import *
 from MI_TO.diagnostic_plots import sturges
 from MI_TO.heatmaps_plots import *
 from MI_TO.utils import *
-matplotlib.use('MacOSX')
+
+
+##
+
 
 # Set paths
-path_main = '/Users/IEO5505/Desktop/MI_TO/'
+path_main = sys.argv[1]
+sample_names = ['MDA', 'PDX', 'AML']
+
 path_clones = path_main + '/results_and_plots/clones_classification/'
 path_samples = path_main + '/results_and_plots/samples_classification/'
+path_results = path_main + '/results_and_plots/classification_performance/'
 
 # Read reports
 clones = pd.read_excel(path_clones + 'report_classification_clones.xlsx', index_col=0)
@@ -64,7 +72,7 @@ ax.text(-0.4, np.median(clones.query('comparison == "TCCCTGGAGTCTTCGAAC_vs_rest"
 ax.text(-0.4, np.median(clones.query('comparison == "CTCCTCCGCGGCGAAACG_vs_rest"')['f1']) - 0.06, 'CTCCTCCGCGGCGAAACG')
 
 # Save
-fig.savefig(path_main + '/results_and_plots/classification_performance/median_f1_by_task.pdf')
+fig.savefig(path_results + 'median_f1_by_task.pdf')
 ############## 
 
 
@@ -97,7 +105,7 @@ ax.text(0.2, 0.7, f'-n clones with median f1 > 0.5: 1', transform=ax.transAxes)
 
 # Save
 fig.tight_layout()
-fig.savefig(path_main + '/results_and_plots/classification_performance/clones_f1.pdf')
+fig.savefig(path_results + 'clones_f1.pdf')
 ##############
 
 
@@ -121,7 +129,7 @@ ax.text(0.7, 0.44, f'Mean f1 clones PDX: {clones.loc[clones["sample"]=="PDX"]["f
 
 # Save
 fig.tight_layout()
-fig.savefig(path_main + '/results_and_plots/classification_performance/clones_f1_by_sample.pdf')
+fig.savefig(path_results + 'clones_f1_by_sample.pdf')
 ##############
 
 
@@ -145,7 +153,7 @@ ax.text(0.35, 0.42, f'Mean f1 clones logit: {clones.loc[clones["model"]=="logit"
 
 # Save
 fig.tight_layout()
-fig.savefig(path_main + '/results_and_plots/classification_performance/clones_f1_by_model.pdf')
+fig.savefig(path_results + 'clones_f1_by_model.pdf')
 ##############
 
 
@@ -183,7 +191,7 @@ format_ax(clones, ax, title='f1-clone size correlation', xlabel='Clone size', yl
 
 # Save
 fig.tight_layout()
-fig.savefig(path_main + '/results_and_plots/classification_performance/clones_size_f1_corr.pdf')
+fig.savefig(path_results + 'clones_size_f1_corr.pdf')
 ##############
 
 
@@ -193,9 +201,9 @@ fig.savefig(path_main + '/results_and_plots/classification_performance/clones_si
 
 ############## 
 # For each sample (3x) clones, what are the top 3 analyses (median f1 score across clones)? 
-# Intersection among selected SNVs?? --> Take out from cluster
+# Intersection among selected SNVs??
 
-# Save top3 for easy quering on the cluster
+# Save top3 for easy quering
 top_3 = {}
 for sample in clones['sample'].unique():
     top_3[sample] = clones.query('sample == @sample').groupby(['analysis']).agg(
@@ -203,35 +211,35 @@ for sample in clones['sample'].unique():
         'f1', ascending=False).index[:3].to_list()
 
 # Load top3 variants for each sample clones, and visualize their intersection (i.e., J.I.), by sample
-D = {}
-for sample in os.listdir(path_clones + 'top3_analysis/'):
-    if sample != '.DS_Store':
+top3_sample_variants = {}
+for sample in sample_names:
         var_dict = {}
-        for x in os.listdir(path_clones + f'top3_analysis/{sample}/'):
-            n = '_'.join(x.split('.')[0].split('_')[2:-1])
-            df_ = pd.read_excel(path_clones + f'top3_analysis/{sample}/{x}', index_col=0)
-            var_dict[n] = df_.index.unique().to_list()
-        D[sample] = var_dict
+        for x in os.listdir(path_results + f'top_3/{sample}/'):
+            if x.endswith('.xlsx'):
+                n = '_'.join(x.split('.')[0].split('_')[2:-1])
+                df_ = pd.read_excel(path_results + f'top_3/{sample}/{x}', index_col=0)
+                var_dict[n] = df_.index.unique().to_list()
+        top3_sample_variants[sample] = var_dict
 
 # Sample a
 fig, axs = plt.subplots(1, 3, figsize=(10,5))
 
-for k, sample in enumerate(D):
-    n_analysis = len(D[sample].keys())
+for k, sample in enumerate(top3_sample_variants):
+    n_analysis = len(top3_sample_variants[sample].keys())
     JI = np.zeros((n_analysis, n_analysis))
-    for i, l1 in enumerate(D[sample]):
-        for j, l2 in enumerate(D[sample]):
-            x = D[sample][l1]
-            y = D[sample][l2]
+    for i, l1 in enumerate(top3_sample_variants[sample]):
+        for j, l2 in enumerate(top3_sample_variants[sample]):
+            x = top3_sample_variants[sample][l1]
+            y = top3_sample_variants[sample][l2]
             JI[i, j] = ji(x, y)
-    JI = pd.DataFrame(data=JI, index=None, columns=D[sample].keys())
+    JI = pd.DataFrame(data=JI, index=None, columns=top3_sample_variants[sample].keys())
 
     plot_heatmap(JI, palette='mako', ax=axs[k], title=sample, y_names=False,
         x_names_size=10, y_names_size=0, annot=True, annot_size=10, cb=True, label='JI variants'
     )
 
 fig.tight_layout()
-fig.savefig(path_main + '/results_and_plots/classification_performance/overlap_selected_vars.pdf')
+fig.savefig(path_results + 'overlap_selected_vars.pdf')
 ##############
 
 
@@ -239,12 +247,16 @@ fig.savefig(path_main + '/results_and_plots/classification_performance/overlap_s
 
 
 ############## 
-# For each sample (3x) clones, what are the AF profiles of the variants selected?
+# For each sample top3 analysis on the clone task, what are the AF profiles of the variants selected?
+# Which relatinship can we visualize among clone cells, using:
+# 1) hclustering of cell x var AFM 
+# 2) hclustering of a cell x cell similarity matrix?
+
 path_data = path_main + 'data/'
-path_results = path_main + '/results_and_plots/classification_performance/'
+path_distances = path_main + 'results_and_plots/distances/'
 
 # Here we go
-for sample in ['MDA', 'AML', 'PDX']:
+for sample in sample_names:
 
     if not os.path.exists(path_results + 'top_3'):
         os.mkdir(path_results + 'top_3')
@@ -262,7 +274,8 @@ for sample in ['MDA', 'AML', 'PDX']:
     afm, variants = format_matrix(orig, CBC_GBC)
 
     # For all top3 analysis of that sample...:
-    for analysis in D[sample]:
+    for analysis in top3_sample_variants[sample]:
+        print(analysis)
         a_ = analysis.split('_')[:-1]
         filtering = a_[0]  
         min_cell_number = int(a_[1])
@@ -298,19 +311,13 @@ for sample in ['MDA', 'AML', 'PDX']:
         # Control vars...
         print(analysis)
         print(a)
-        assert all([ var in D[sample][analysis] for var in a.var_names ])
+        assert all([ var in top3_sample_variants[sample][analysis] for var in a.var_names ])
 
-        # Viz matrix cell x vars
-        if np.any(np.isnan(a.X)):
-            a.X[np.isnan(a.X)] = 0
-        g = cells_vars_heatmap(a, covariate='GBC', palette_anno='dark', cmap='magma', 
-            title = f'{sample} clones, {analysis}', title_legend='Clones', loc_legend='lower center', 
-            bbox_legend=(0.825, 0.5)
-        )
-        g.savefig(f'{analysis}_cell_x_vars_heatmap.pdf')
-
-        # Viz VAFs
+        # 1-Viz selected variants properties
         fig, axs = plt.subplots(1, 2, figsize=(11, 5), constrained_layout=True)
+
+        # Set colors 
+        colors = {'non-selected':'grey', 'selected':'red'}
 
         # To nans
         to_plot = a_cells.copy()
@@ -321,11 +328,10 @@ for sample in ['MDA', 'AML', 'PDX']:
             x = to_plot.X[:, i]
             x = np.sort(x)
             if var in a.var_names:
-                axs[0].plot(x, '--', color='red', linewidth=0.5)
+                axs[0].plot(x, '--', color=colors['selected'], linewidth=0.5)
             else:
-                axs[0].plot(x, '--', color='grey', linewidth=0.2)
+                axs[0].plot(x, '--', color=colors['non-selected'], linewidth=0.2)
 
-        colors = {'selected':'red', 'non-selected':'grey'}
         format_ax(pd.DataFrame(x), ax=axs[0], title='Ranked AFs', xlabel='Cell rank', ylabel='AF')
 
         # Vafs summary stats
@@ -334,6 +340,7 @@ for sample in ['MDA', 'AML', 'PDX']:
             is_selected=lambda x: np.where(x['variant'].isin(a.var_names), 'selected', 'non-selected')).melt(
             id_vars=['variant', 'is_selected'], var_name='summary_stat')
 
+        #strip(df_, 'summary_stat', 'value', by='is_selected', s=2, c=colors, ax=axs[1])
         violin(df_, 'summary_stat', 'value', by='is_selected', c=colors, ax=axs[1])
         format_ax(df_, ax=axs[1], title='Summary statistics', 
             xticks=df_['summary_stat'].unique(), xlabel='', ylabel='Value'
@@ -346,6 +353,40 @@ for sample in ['MDA', 'AML', 'PDX']:
 
         # Save
         fig.savefig(f'{analysis}_variants.pdf')
+        
+        # 2-Viz cell x var and cell x cell heatmaps
+        with PdfPages(f'{sample}_{analysis}_heatmaps.pdf') as pdf:
+
+            a = nans_as_zeros(a)
+            clone_colors = create_palette(a.obs, 'GBC', palette='dark')
+            cell_anno_clones = [ clone_colors[clone] for clone in a.obs['GBC'] ]
+
+            # Viz 
+            g = cells_vars_heatmap(a, cell_anno=cell_anno_clones, anno_colors=clone_colors, 
+                heat_label='AF', legend_label='Clone', figsize=(11, 8), title=f'{sample}: {analysis}'
+            )
+            pdf.savefig() 
+
+            # 3-Viz all cell x cell similarity matrices obtained from the filtered AFM one.
+            for x in os.listdir(path_distances):
+                if bool(re.search(f'{sample}_{"_".join(analysis.split("_")[:-1])}', x)):
+                    a_ = x.split('_')[:-1]
+                    metric = a_[-1]
+                    with_nans = 'w/i nans' if a_[-2] == 'yes' else 'w/o nans'
+                    D = sc.read(path_distances + x)
+
+                    assert (a.obs_names == D.obs_names).all()
+                    D.obs['GBC'] = a.obs['GBC']
+
+                    # Draw clustered similarity matrix heatmap 
+                    heat_title = f'{sample} clones: {filtering}_{min_cell_number}_{min_cov_treshold}, {metric} {with_nans}'
+                    g = cell_cell_dists_heatmap(D, cell_anno=cell_anno_clones, anno_colors=clone_colors, 
+                        heat_label='Similarity', legend_label='Clone', figsize=(11, 6.5), 
+                        title=heat_title
+                    )
+                pdf.savefig() 
+
+            plt.close()
 ############## 
 
 
@@ -360,19 +401,19 @@ for sample in clones['sample'].unique():
     top_clones[sample] = clones.query('sample == @sample and analysis in @top').groupby(['comparison']).agg(
         {'f1':np.median}).sort_values(
         'f1', ascending=False).query('f1 > 0.5').index.to_list()
-
+print(f'Top clones: {top_clones}')
 
 # Load top3 analyses variants for each sample, and visualize their intersection (i.e., J.I.)
 D = {}
-for sample in os.listdir(path_clones + 'top3_analysis/'):
+for sample in sample_names:
     var_dict = {}
-    for x in os.listdir(path_clones + f'top3_analysis/{sample}/'):
-        n = '_'.join(x.split('.')[0].split('_')[2:-1])
-        df_ = pd.read_excel(path_clones + f'top3_analysis/{sample}/{x}', index_col=0)
+    for x in os.listdir(path_results + f'top_3/{sample}/'):
+        if x.endswith('.xlsx'):
+            n = '_'.join(x.split('.')[0].split('_')[2:-1])
+            df_ = pd.read_excel(path_results + f'top_3/{sample}/{x}', index_col=0)
 
-        df_ = df_.loc[df_['comparison'].str.contains('|'.join(top_clones[sample]))]
-        df_.groupby('comparison').head()
-        var_dict[n] = df_.index.to_list()
+            df_ = df_.loc[df_['comparison'].str.contains('|'.join(top_clones[sample]))]
+            var_dict[n] = df_.index.to_list()
     D[sample] = var_dict
 
 # Sample a
@@ -393,5 +434,5 @@ for k, sample in enumerate(D):
     )
 
 fig.tight_layout()
-fig.savefig(path_main + '/results_and_plots/classification_performance/overlap_selected_vars.pdf')
+fig.savefig(path_results + 'overlap_selected_vars_only_top_clones.pdf')
 ################

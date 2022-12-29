@@ -26,7 +26,7 @@ def cells_vars_heatmap(afm, cell_anno=None, anno_colors=None, heat_label=None,
     annotated heatmap visualization.
     """
     g = sns.clustermap(pd.DataFrame(data=afm.X, columns=afm.var_names), 
-    cmap='viridis', yticklabels=False, xticklabels=True, 
+    cmap='magma', yticklabels=False, xticklabels=True, 
     dendrogram_ratio=(.3, .04), figsize=figsize, row_cluster=True, col_cluster=True, 
     annot=False, cbar_kws={'use_gridspec' : False, 'orientation' : 'vertical', 'label' : heat_label}, 
     colors_ratio=0.05, row_colors=cell_anno
@@ -57,7 +57,7 @@ def cell_cell_dists_heatmap(D, cell_anno=None, anno_colors=None, heat_label=None
     Plot cell-to-cell similarity matrix.
     """
     g = sns.clustermap(pd.DataFrame(data=1-D.X, index=D.obs_names.to_list(), columns=D.obs_names.to_list()), 
-        cmap='viridis', yticklabels=False, xticklabels=False, 
+        cmap='magma', yticklabels=False, xticklabels=False, 
         dendrogram_ratio=(.3, .04), figsize=figsize, row_cluster=True, col_cluster=True, 
         annot=False, cbar_kws={'use_gridspec' : False, 'orientation' : 'vertical', 'label' : heat_label}, 
         colors_ratio=0.025, row_colors=cell_anno, col_colors=cell_anno
