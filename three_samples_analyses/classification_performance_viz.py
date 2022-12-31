@@ -15,6 +15,7 @@ from MI_TO.preprocessing import *
 from MI_TO.diagnostic_plots import sturges
 from MI_TO.heatmaps_plots import *
 from MI_TO.utils import *
+from MI_TO.diagnostic_plots import *
 #matplotlib.use('macOSX')
 
 
