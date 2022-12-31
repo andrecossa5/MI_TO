@@ -7,6 +7,7 @@ import pickle
 import re
 import os
 import sys
+import gc
 from Cellula.plotting._plotting import *
 from Cellula.plotting._plotting_base import *
 from Cellula.plotting._colors import *
@@ -250,134 +251,134 @@ fig.savefig(path_results + 'overlap_selected_vars.pdf')
 ##
 
 
-# ############## 
-# # For each sample top3 analysis on the clone task, what are the AF profiles of the variants selected?
-# # Which relatinship can we visualize among clone cells, using:
-# # 1) hclustering of cell x var AFM 
-# # 2) hclustering of a cell x cell similarity matrix?
-# path_data = path_main + 'data/'
-# path_distances = path_main + 'results_and_plots/distances/'
-# 
-# # Here we go
-# for sample in sample_names:
-# 
-#     if not os.path.exists(path_results + 'top_3'):
-#         os.mkdir(path_results + 'top_3')
-#     os.chdir(path_results + 'top_3')
-#     
-#     if not os.path.exists(path_results + f'top_3/{sample}'):
-#         os.mkdir(sample)
-#     os.chdir(sample)
-# 
-#     # Read data
-#     orig = sc.read(path_data + f'/AFMs/{sample}_afm.h5ad')
-#     CBC_GBC = pd.read_csv(path_data + f'CBC_GBC_cells/CBC_GBC_{sample}.csv', index_col=0)
-# 
-#     # Format variants AFM
-#     afm, variants = format_matrix(orig, CBC_GBC)
-# 
-#     # For all top3 analysis of that sample...:
-#     for analysis in top3_sample_variants[sample]:
-#         print(analysis)
-#         a_ = analysis.split('_')[:-1]
-#         filtering = a_[0]  
-#         min_cell_number = int(a_[1])
-#         min_cov_treshold = int(a_[2])
-# 
-#         # Filter cells and vars
-#         a, a_cells = filter_cells_and_vars(
-#             afm, 
-#             filtering=filtering,
-#             min_cell_number=min_cell_number,
-#             min_cov_treshold=min_cov_treshold
-#         )
-# 
-#         # Control vars...
-#         print(analysis)
-#         print(a)
-#         assert all([ var in top3_sample_variants[sample][analysis] for var in a.var_names ])
-# 
-#         # 1-Viz selected variants properties
-#         fig, axs = plt.subplots(1, 2, figsize=(11, 5), constrained_layout=True)
-# 
-#         # Set colors 
-#         colors = {'non-selected':'grey', 'selected':'red'}
-# 
-#         # To nans
-#         to_plot = a_cells.copy()
-#         to_plot.X[np.isnan(to_plot.X)] = 0
-# 
-#         # Vafs ditribution
-#         for i, var in enumerate(a_cells.var_names):
-#             x = to_plot.X[:, i]
-#             x = np.sort(x)
-#             if var in a.var_names:
-#                 axs[0].plot(x, '--', color=colors['selected'], linewidth=0.5)
-#             else:
-#                 axs[0].plot(x, '--', color=colors['non-selected'], linewidth=0.2)
-# 
-#         format_ax(pd.DataFrame(x), ax=axs[0], title='Ranked AFs', xlabel='Cell rank', ylabel='AF')
-# 
-#         # Vafs summary stats
-#         df_ = summary_stats_vars(to_plot, variants=None).drop('median_coverage', axis=1).reset_index(
-#             ).rename(columns={'index' : 'variant'}).assign(
-#             is_selected=lambda x: np.where(x['variant'].isin(a.var_names), 'selected', 'non-selected')).melt(
-#             id_vars=['variant', 'is_selected'], var_name='summary_stat')
-# 
-#         #strip(df_, 'summary_stat', 'value', by='is_selected', s=2, c=colors, ax=axs[1])
-#         violin(df_, 'summary_stat', 'value', by='is_selected', c=colors, ax=axs[1])
-#         format_ax(df_, ax=axs[1], title='Summary statistics', 
-#             xticks=df_['summary_stat'].unique(), xlabel='', ylabel='Value'
-#         )
-#         handles = create_handles(colors.keys(), marker='o', colors=colors.values(), size=10, width=0.5)
-#         axs[1].legend(handles, colors.keys(), title='Selection', loc='center left', 
-#             bbox_to_anchor=(1, 0.5), ncol=1, frameon=False
-#         )
-#         fig.suptitle(f'{sample}: analysis {analysis}')
-# 
-#         # Save
-#         fig.savefig(f'{analysis}_variants.pdf')
-#         
-#         # 2-Viz cell x var and cell x cell heatmaps
-#         with PdfPages(f'{sample}_{analysis}_heatmaps.pdf') as pdf:
-# 
-#             a = nans_as_zeros(a)
-#             clone_colors = create_palette(a.obs, 'GBC', palette='dark')
-#             cell_anno_clones = [ clone_colors[clone] for clone in a.obs['GBC'] ]
-# 
-#             # Viz 
-#             g = cells_vars_heatmap(a, cell_anno=cell_anno_clones, anno_colors=clone_colors, 
-#                 heat_label='AF', legend_label='Clone', figsize=(11, 8), title=f'{sample}: {analysis}'
-#             )
-#             pdf.savefig() 
-# 
-#             # 3-Viz all cell x cell similarity matrices obtained from the filtered AFM one.
-#             for x in os.listdir(path_distances):
-#                 if bool(re.search(f'{sample}_{"_".join(analysis.split("_")[:-1])}', x)):
-#                     print(x)
-#                     a_ = x.split('_')[:-1]
-#                     metric = a_[-1]
-#                     with_nans = 'w/i nans' if a_[-2] == 'yes' else 'w/o nans'
-#                     D = sc.read(path_distances + x)
-# 
-#                     if a.shape[0] == D.shape[0]:
-#                         print(a, D)
-#                         assert (a.obs_names == D.obs_names).all()
-#                         D.obs['GBC'] = a.obs['GBC']
-# 
-#                         # Draw clustered similarity matrix heatmap 
-#                         heat_title = f'{sample} clones: {filtering}_{min_cell_number}_{min_cov_treshold}, {metric} {with_nans}'
-#                         g = cell_cell_dists_heatmap(D, cell_anno=cell_anno_clones, anno_colors=clone_colors, 
-#                             heat_label='Similarity', legend_label='Clone', figsize=(11, 6.5), 
-#                             title=heat_title
-#                         )
-#                         pdf.savefig()
-#                     else:
-#                         print(f'{x} not added...')
-# 
-#             plt.close()
-# ##############
-# 
+############## 
+# For each sample top3 analysis on the clone task, what are the AF profiles of the variants selected?
+# Which relatinship can we visualize among clone cells, using:
+# 1) hclustering of cell x var AFM 
+# 2) hclustering of a cell x cell similarity matrix?
+path_data = path_main + 'data/'
+path_distances = path_main + 'results_and_plots/distances/'
+
+# Here we go
+for sample in sample_names:
+
+    if not os.path.exists(path_results + 'top_3'):
+        os.mkdir(path_results + 'top_3')
+    os.chdir(path_results + 'top_3')
+    
+    if not os.path.exists(path_results + f'top_3/{sample}'):
+        os.mkdir(sample)
+    os.chdir(sample)
+
+    # Read data
+    orig = sc.read(path_data + f'/AFMs/{sample}_afm.h5ad')
+    CBC_GBC = pd.read_csv(path_data + f'CBC_GBC_cells/CBC_GBC_{sample}.csv', index_col=0)
+
+    # Format variants AFM
+    afm, variants = format_matrix(orig, CBC_GBC)
+    gc.collect()
+ 
+    # For all top3 analysis of that sample...:
+    for analysis in top3_sample_variants[sample]:
+
+        print(analysis)
+        a_ = analysis.split('_')[:-1]
+        filtering = a_[0]  
+        min_cell_number = int(a_[1])
+        min_cov_treshold = int(a_[2])
+ 
+        # Filter cells and vars
+        a_cells, a = filter_cells_and_vars(
+            afm, 
+            filtering=filtering,
+            min_cell_number=min_cell_number,
+            min_cov_treshold=min_cov_treshold
+        )
+        gc.collect()
+ 
+        # Control vars...
+        print(analysis)
+        print(a)
+        assert all([ var in top3_sample_variants[sample][analysis] for var in a.var_names ])
+ 
+        # 1-Viz selected variants properties
+        fig, axs = plt.subplots(1, 2, figsize=(11, 5), constrained_layout=True) 
+        # Set colors 
+        colors = {'non-selected':'grey', 'selected':'red'} 
+        # To nans
+        to_plot = a_cells.copy()
+        to_plot.X[np.isnan(to_plot.X)] = 0 
+        # Vafs ditribution
+        for i, var in enumerate(a_cells.var_names):
+            x = to_plot.X[:, i]
+            x = np.sort(x)
+            if var in a.var_names:
+                axs[0].plot(x, '--', color=colors['selected'], linewidth=0.5)
+            else:
+                axs[0].plot(x, '--', color=colors['non-selected'], linewidth=0.2)
+  
+        format_ax(pd.DataFrame(x), ax=axs[0], title='Ranked AFs', xlabel='Cell rank', ylabel='AF')
+
+        # Vafs summary stats
+        df_ = summary_stats_vars(to_plot, variants=None).drop('median_coverage', axis=1).reset_index(
+            ).rename(columns={'index' : 'variant'}).assign(
+            is_selected=lambda x: np.where(x['variant'].isin(a.var_names), 'selected', 'non-selected')).melt(
+            id_vars=['variant', 'is_selected'], var_name='summary_stat')
+
+        #strip(df_, 'summary_stat', 'value', by='is_selected', s=2, c=colors, ax=axs[1])
+        violin(df_, 'summary_stat', 'value', by='is_selected', c=colors, ax=axs[1])
+        format_ax(df_, ax=axs[1], title='Summary statistics', 
+            xticks=df_['summary_stat'].unique(), xlabel='', ylabel='Value'
+        )
+        handles = create_handles(colors.keys(), marker='o', colors=colors.values(), size=10, width=0.5)
+        axs[1].legend(handles, colors.keys(), title='Selection', loc='center left', 
+            bbox_to_anchor=(1, 0.5), ncol=1, frameon=False
+        )
+        fig.suptitle(f'{sample}: analysis {analysis}')
+
+        # Save
+        fig.savefig(f'{analysis}_variants.pdf')
+        
+        # 2-Viz cell x var and cell x cell heatmaps
+        with PdfPages(f'{sample}_{analysis}_heatmaps.pdf') as pdf:
+
+            a = nans_as_zeros(a)
+            clone_colors = create_palette(a.obs, 'GBC', palette='dark')
+            cell_anno_clones = [ clone_colors[clone] for clone in a.obs['GBC'] ]
+
+            # Viz 
+            g = cells_vars_heatmap(a, cell_anno=cell_anno_clones, anno_colors=clone_colors, 
+                heat_label='AF', legend_label='Clone', figsize=(11, 8), title=f'{sample}: {analysis}'
+            )
+            pdf.savefig() 
+
+            # 3-Viz all cell x cell similarity matrices obtained from the filtered AFM one.
+            for x in os.listdir(path_distances):
+                if bool(re.search(f'{sample}_{"_".join(analysis.split("_")[:-1])}', x)):
+                    print(x)
+                    a_ = x.split('_')[:-1]
+                    metric = a_[-1]
+                    with_nans = 'w/i nans' if a_[-2] == 'yes' else 'w/o nans'
+                    D = sc.read(path_distances + x)
+                    gc.collect()
+
+                    if a.shape[0] == D.shape[0]:
+                        print(a, D)
+                        assert (a.obs_names == D.obs_names).all()
+                        D.obs['GBC'] = a.obs['GBC']
+
+                        # Draw clustered similarity matrix heatmap 
+                        heat_title = f'{sample} clones: {filtering}_{min_cell_number}_{min_cov_treshold}, {metric} {with_nans}'
+                        g = cell_cell_dists_heatmap(D, cell_anno=cell_anno_clones, anno_colors=clone_colors, 
+                            heat_label='Similarity', legend_label='Clone', figsize=(11, 6.5), 
+                            title=heat_title
+                        )
+                        pdf.savefig()
+                    else:
+                        print(f'{x} not added...')
+            plt.close()
+##############
+ 
 
 ##
 
@@ -431,6 +432,8 @@ print(f'Top clones: {top_clones_d}')
 # Here we go...
 for sample in sample_names: 
 
+    sample = 'AML'
+
     if len(top_clones_d[sample]['clones']) > 0:
 
         afm = read_one_sample(path_main, sample=sample)
@@ -450,12 +453,16 @@ for sample in sample_names:
             min_cell_number = best_for_each_top_clone_df['min_cell_number'][i]
             min_cov_treshold = best_for_each_top_clone_df['min_cov_treshold'][i]
             model = best_for_each_top_clone_df['model'][i]
+
             # Viz
+            print(topper)
             fig = viz_clone_variants(
                 afm, topper, 
                 sample=sample, path=path_clones, 
-                filtering=filtering, min_cell_number=min_cell_number, min_cov_treshold=min_cov_treshold, model=model, 
+                filtering=filtering, min_cell_number=min_cell_number, 
+                min_cov_treshold=min_cov_treshold, model=model, 
                 figsize=(10,10)
             )
+
             fig.savefig(path_results + f'top_3/{sample}/{topper}_features.pdf')
 ################
