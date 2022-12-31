@@ -10,6 +10,7 @@ from Cellula._utils import Timer
 from Cellula.plotting._plotting import *
 from Cellula.plotting._plotting_base import *
 from MI_TO.preprocessing import *
+from MI_TO.utils import *
 
 
 ##
@@ -436,7 +437,7 @@ def viz_clone_variants(afm, clone_name, sample=None, path=None, filtering=None,
     colors = {'other':'grey', 'top':'red'}
     df_ = afm.obs.groupby('GBC').size().to_frame().rename(
         columns={0:'n_cells'}).sort_values('n_cells', ascending=False).assign(
-        feat=lambda x: np.where(x.index == topper, 'top', 'other')
+        feat=lambda x: np.where(x.index == clone_name, 'top', 'other')
         )
     bar(df_, 'n_cells', by='feat', c=colors, s=0.75, ax=axs[0,0])
     format_ax(df_, ax=axs[0,0], 
@@ -528,6 +529,6 @@ def viz_clone_variants(afm, clone_name, sample=None, path=None, filtering=None,
     format_ax(class_df, ax=axs[1,1], ysize=2, title='Feature importance')
 
     # Save
-    fig.suptitle(f'{topper} clone features')
+    fig.suptitle(f'{clone_name} clone features')
 
     return fig
