@@ -298,3 +298,38 @@ def filter_density(afm, density=0.5, steps=np.Inf):
         i += 1
     
     return afm
+
+
+##
+
+
+def filter_cells_and_vars(afm, filtering=None, min_cell_number=None, min_cov_treshold=None):
+    """
+    Filter cells and vars from an afm.
+    """ 
+    if filtering in ['CV', 'ludwig2019', 'velten2021', 'miller2022']:
+        # Cells
+        a_cells = filter_cells_coverage(afm, mean_coverage=min_cov_treshold) 
+        if min_cell_number > 0:
+            cell_counts = a_cells.obs.groupby('GBC').size()
+            clones_to_retain = cell_counts[cell_counts>min_cell_number].index 
+            cells_to_retain = a_cells.obs.query('GBC in @clones_to_retain').index
+            a_cells = a_cells[cells_to_retain, :].copy()
+        # Variants
+        if filtering == 'CV':
+            a = filter_CV(a_cells, n=50)
+        elif filtering == 'ludwig2019':
+            a = filter_ludwig2019(a_cells, mean_AF=0.5, mean_qual=0.2)
+        elif filtering == 'velten2021':
+            a = filter_velten2021(a_cells, mean_AF=0.1, min_cell_perc=0.2)
+        elif filtering == 'miller2022':
+            a = filter_miller2022(a_cells, mean_coverage=100, mean_qual=0.3, perc_1=0.01, perc_99=0.1)
+    elif filtering == 'density':
+        a = filter_density(afm, density=0.5, steps=np.Inf)
+        if min_cell_number > 0:
+            cell_counts = a.obs.groupby('GBC').size()
+            clones_to_retain = cell_counts[cell_counts>min_cell_number].index 
+            cells_to_retain = a.obs.query('GBC in @clones_to_retain').index
+            a = a[cells_to_retain, :].copy()
+
+    return a_cells, a

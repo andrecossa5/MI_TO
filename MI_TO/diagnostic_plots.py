@@ -401,3 +401,133 @@ def positive_events_by_var_type(afm, orig, ax=None, color=None, title=None):
     format_ax(df_, ax=ax, title=t, xticks=df_.index, ylabel='\n%')
 
     return ax
+
+
+##
+
+
+def viz_clone_variants(afm, clone_name, sample=None, path=None, filtering=None, 
+    min_cell_number=None, min_cov_treshold=None, model=None, figsize=(10, 10)):
+    """
+    Visualization summary of the properties of a clone distiguishing variants, within some analysis context
+    """
+
+    # Read clone classification report
+    file = f'clones_{sample}_{filtering}_{min_cell_number}_{min_cov_treshold}_{model}_f1.xlsx'
+    class_df = pd.read_excel(path + file, index_col=0)
+    class_df = class_df.loc[class_df['comparison'] == f'{clone_name}_vs_rest']
+
+    # Filter sample AFM as done in the classification picked
+    a_cells, a = filter_cells_and_vars(
+        afm, 
+        filtering=filtering,
+        min_cell_number=min_cell_number,
+        min_cov_treshold=min_cov_treshold
+    )
+
+    ##
+
+    # Draw the figure: top clone distinguishing features
+
+    # Figure
+    fig, axs = plt.subplots(2, 2, figsize=figsize, constrained_layout=True)
+
+    # Sub 1: clone size in its sample
+    colors = {'other':'grey', 'top':'red'}
+    df_ = afm.obs.groupby('GBC').size().to_frame().rename(
+        columns={0:'n_cells'}).sort_values('n_cells', ascending=False).assign(
+        feat=lambda x: np.where(x.index == topper, 'top', 'other')
+        )
+    bar(df_, 'n_cells', by='feat', c=colors, s=0.75, ax=axs[0,0])
+    format_ax(df_, ax=axs[0,0], 
+        title=f'{sample} clonal abundances', 
+        xticks='', xlabel='Clones', ylabel='n cells', xsize=8, rotx=90
+    )
+    handles = create_handles(colors.keys(), colors=colors.values())
+    axs[0,0].legend(handles, colors.keys(), loc='upper right', 
+        title='Clone', frameon=False, bbox_to_anchor=(0.90, 0.95)
+    )
+    axs[0,0].text(0.6, 0.60, f"min_cell_number: {min_cell_number}", transform=axs[0,0].transAxes)
+    axs[0,0].text(0.6, 0.55, f"min_cov_treshold: {min_cov_treshold}", transform=axs[0,0].transAxes)
+
+    ##
+
+    # # Sub 2: variants stats, within selected cells 
+    # Density, Median coverage and AF for: 
+    # a) all muts; b) muts selected in the picked analysis; c) and top10 ranked for feature importance for
+    # the clone
+    df_vars = summary_stats_vars(a_cells)
+    df_vars['is_selected'] = np.where(df_vars.index.isin(class_df.index), 'selected', 'non-selected')
+    df_vars['is_top'] = np.where(
+        (df_vars['is_selected'] == 'selected').values & df_vars.index.isin(class_df.index[:10]), 'top10', 'others'
+    )
+
+    scatter(df_vars.query('is_selected == "non-selected"'), 'median_coverage', 'median_AF', s=10, c='grey', ax=axs[0,1])
+    scatter(df_vars.query('is_selected == "selected"'), 'median_coverage', 'median_AF', s=10, c='red', ax=axs[0,1])
+    scatter(df_vars.query('is_top == "top10"'), 'median_coverage', 'median_AF', s=10, c='black', ax=axs[0,1])
+
+    format_ax(df_vars, ax=axs[0,1], title='Variants properties', xlabel='median_coverage', ylabel='median_AF')
+    axs[0,1].set(xlim=(-5, 200), ylim=(-0.01, 0.4))
+
+    colors = {'non-selected':'grey', 'selected':'red', 'top10':'black'}
+    handles = create_handles(colors.keys(), colors=colors.values())
+    axs[0,1].legend(handles, colors.keys(), loc='upper right', 
+        bbox_to_anchor=(0.90, 0.95), ncol=1, frameon=False, title='Variant'
+    )
+    n_non_selected = df_vars.query('is_selected == "non-selected"').shape[0]
+    n_selected = df_vars.query('is_selected == "selected"').shape[0]
+    axs[0,1].text(0.6, 0.60, f"n non-selected: {n_non_selected}", transform=axs[0,1].transAxes)
+    axs[0,1].text(0.6, 0.55, f"n selected: {n_selected-10}", transform=axs[0,1].transAxes)
+    axs[0,1].text(0.6, 0.50, "Top: 10", transform=axs[0,1].transAxes)
+
+
+    axins = inset_axes(axs[0,1], width="32%", height="30%", borderpad=2.5,
+        bbox_transform=axs[0,1].transAxes, loc=4
+    )
+    violin(
+        df_vars.query('is_selected == "selected"').loc[:, 
+        ['density', 'median_AF', 'is_top']].melt(
+            id_vars='is_top', var_name='feature', value_name='value'
+        ), 
+        'feature', 'value', by='is_top', c={'others':'red', 'top10':'black'}, ax=axins
+    )
+    format_ax(df_vars, ax=axins, xticks=['density', 'median_AF'])
+
+    ##
+
+    # Sub3: VAF profile for: 
+    # 1) non-selected vars, 2) vars selected in the picked analysis and 3) top10 vars 
+    to_plot = a_cells.copy()
+    to_plot.X[np.isnan(to_plot.X)] = 0
+
+    vars_non_selected = df_vars.query('is_selected == "non-selected"').index
+    vars_selected = df_vars.query('is_selected == "selected" and is_top == "others"').index
+    vars_top10 = df_vars.query('is_selected == "selected" and is_top == "top10"').index
+
+    for i, var in enumerate(to_plot.var_names):
+        x = to_plot.X[:, i]
+        x = np.sort(x)
+        if var in vars_non_selected:
+            axs[1,0].plot(x, '--', color=colors['non-selected'], linewidth=0.2)
+        elif var in vars_selected:
+            axs[1,0].plot(x, '--', color=colors['selected'], linewidth=1)
+        elif var in vars_top10:
+            axs[1,0].plot(x, '--', color=colors['top10'], linewidth=2)
+
+    format_ax(pd.DataFrame(x), ax=axs[1,0], title='Ranked AFs', xlabel='Cell rank', ylabel='AF')
+
+    # handles = create_handles(colors.keys(), marker='o', colors=colors.values(), size=10, width=0.5)
+    # axs[1,0].legend(handles, colors.keys(), title='Variant', loc='upper left', 
+    #     bbox_to_anchor=(0.05, 0.95), ncol=1, frameon=False
+    # )
+
+    ##
+
+    # Sub4: Feature importance of top10 muts
+    stem_plot(class_df, 'effect_size', ax=axs[1,1])
+    format_ax(class_df, ax=axs[1,1], ysize=2, title='Feature importance')
+
+    # Save
+    fig.suptitle(f'{topper} clone features')
+
+    return fig
