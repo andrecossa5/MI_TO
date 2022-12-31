@@ -455,7 +455,7 @@ for sample in sample_names:
                 filtering=filtering, min_cell_number=min_cell_number, min_cov_treshold=min_cov_treshold, model=model, 
                 figsize=(10,10)
             )
-            fig.savefig(path_results + f'prova_{topper}.pdf')
+            fig.savefig(path_results + f'top_3/{sample}/{topper}_features.pdf')
 
         except: 
             pass # No file
