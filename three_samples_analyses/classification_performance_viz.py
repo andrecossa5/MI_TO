@@ -17,7 +17,6 @@ from MI_TO.diagnostic_plots import sturges
 from MI_TO.heatmaps_plots import *
 from MI_TO.utils import *
 from MI_TO.diagnostic_plots import *
-#matplotlib.use('macOSX')
 
 
 ##
@@ -25,9 +24,7 @@ from MI_TO.diagnostic_plots import *
 
 # Set paths
 path_main = sys.argv[1]
-overwrite = True if sys.argv[2] == 'over' else False
-#path_main = '/Users/IEO5505/Desktop/MI_TO/'
-sample_names = ['MDA', 'PDX', 'AML']
+sample_names = sys.argv[2].split(',')
 
 path_clones = path_main + '/results_and_plots/clones_classification/'
 path_samples = path_main + '/results_and_plots/samples_classification/'
@@ -272,6 +269,7 @@ for sample in sample_names:
     os.chdir(sample)
 
     # Read data and create colors
+    print(sample)
     afm = read_one_sample(path_main, sample)
     clone_colors = create_palette(afm.obs, 'GBC', palette=sc.pl.palettes.default_20)
     gc.collect()
@@ -279,7 +277,6 @@ for sample in sample_names:
     # For all top3 analysis of that sample...:
     for analysis in top3_sample_variants[sample]:
 
-        print(analysis)
         a_ = analysis.split('_')[:-1]
         filtering = a_[0]  
         min_cell_number = int(a_[1])
@@ -369,6 +366,7 @@ for sample in sample_names:
                 for x in os.listdir(path_distances):
 
                     if bool(re.search(f'{sample}_{"_".join(analysis.split("_")[:-1])}_', x)):
+
                         print(x)
                         a_ = x.split('_')[:-1]
                         metric = a_[-1]
@@ -377,7 +375,8 @@ for sample in sample_names:
                         gc.collect()
 
                         if a.shape[0] == D.shape[0]:
-                            print(a, D)
+                            print(a)
+                            print(D)
                             assert (a.obs_names == D.obs_names).all()
                             D.obs['GBC'] = a.obs['GBC']
 
