@@ -21,31 +21,11 @@ sample = 'MDA'
 # Read data
 afm = read_one_sample(path_main, 'MDA')
 a_cells, a = filter_cells_and_vars(afm, filtering='miller2022', min_cell_number=50, min_cov_treshold=50)
-colors = create_palette(a.obs, 'GBC', 'tab20')
-cell_anno = [ colors[clone] for clone in a.obs['GBC'] ]
-g = cells_vars_heatmap(a, cell_anno=cell_anno, anno_colors=colors, heat_label='AF', 
-    legend_label='Clone', figsize=(11, 8), title='Prova', cbar_position=(0.82, 0.2, 0.02, 0.25),
-)
-
-dir(g)
-
-
-dgram = g.dendrogram_row.dendrogram
-
-g.dendrogram_row.linkage
-
-dgram.keys()
-
-
-D = np.array(dgram['dcoord'])
-I = np.array(dgram['icoord'])
 
 
 
 
 from pegasus.tools.hvf_selection import select_hvf_pegasus
-
-
 
 
 def select_hvf_pegasus(

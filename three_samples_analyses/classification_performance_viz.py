@@ -278,9 +278,6 @@ for sample in sample_names:
  
     # For all top3 analysis of that sample...:
     for analysis in top3_sample_variants[sample]:
-        
-        if sample == 'AML' and bool(re.search('miller2022_50_100', analysis)):
-            analysis = 'miller2022_50_100_xgboost' # Avoid duplicate!
 
         print(analysis)
         a_ = analysis.split('_')[:-1]
@@ -371,7 +368,7 @@ for sample in sample_names:
                 # 3-Viz all cell x cell similarity matrices obtained from the filtered AFM one.
                 for x in os.listdir(path_distances):
 
-                    if bool(re.search(f'{sample}_{"_".join(analysis.split("_")[:-1])}', x)):
+                    if bool(re.search(f'{sample}_{"_".join(analysis.split("_")[:-1])}_', x)):
                         print(x)
                         a_ = x.split('_')[:-1]
                         metric = a_[-1]
