@@ -253,6 +253,87 @@ def filter_miller2022(afm, mean_coverage=100, mean_qual=0.3, perc_1=0.01, perc_9
 ##
 
 
+def filter_pegasus_like(afm, nbins=50):
+    """
+    Filter in a procedure akin to scanpy, scran or pegasus.
+    """
+
+    return filtered
+
+
+##
+
+
+def filter_mQUAD(afm, nbins=50):
+    """
+    Filter using the mQUAD procedure
+    """
+
+    return filtered
+
+
+##
+
+
+def filter_DADApy(afm, ):
+    """
+    Filter using DADApy.
+    """
+
+    return filtered
+
+
+##
+
+
+def filter_miller2022(afm, mean_coverage=100, mean_qual=0.3, perc_1=0.01, perc_99=0.1):
+    """
+    Filter variants based on adaptive adopted in Miller et al., 2022.
+    """
+    test_vars_considering_site = []
+    test_sites = np.mean(afm.uns['per_position_coverage'], axis=0) > mean_coverage
+    for x in afm.var_names:
+        i = int(x.split('_')[0])
+        if test_sites[i]:
+            test_vars_considering_site.append(True)
+        else:
+            test_vars_considering_site.append(False)
+    test_vars_considering_site = np.array(test_vars_considering_site)
+    test_vars_qual = np.nanmean(afm.layers['quality'], axis=0) > mean_qual
+    test_vars_het = (np.percentile(afm.X, q=1, axis=0) < perc_1) & (np.percentile(afm.X, q=99, axis=0) > perc_99)
+    test_vars = test_vars_considering_site & test_vars_qual & test_vars_het
+    filtered = afm[:, test_vars].copy()
+
+    return filtered
+
+
+##
+
+
+def filter_miller2022(afm, mean_coverage=100, mean_qual=0.3, perc_1=0.01, perc_99=0.1):
+    """
+    Filter variants based on adaptive adopted in Miller et al., 2022.
+    """
+    test_vars_considering_site = []
+    test_sites = np.mean(afm.uns['per_position_coverage'], axis=0) > mean_coverage
+    for x in afm.var_names:
+        i = int(x.split('_')[0])
+        if test_sites[i]:
+            test_vars_considering_site.append(True)
+        else:
+            test_vars_considering_site.append(False)
+    test_vars_considering_site = np.array(test_vars_considering_site)
+    test_vars_qual = np.nanmean(afm.layers['quality'], axis=0) > mean_qual
+    test_vars_het = (np.percentile(afm.X, q=1, axis=0) < perc_1) & (np.percentile(afm.X, q=99, axis=0) > perc_99)
+    test_vars = test_vars_considering_site & test_vars_qual & test_vars_het
+    filtered = afm[:, test_vars].copy()
+
+    return filtered
+
+
+##
+
+
 def filter_density(afm, density=0.5, steps=np.Inf):
     """
     Jointly filter cells and variants based on the iterative filtering algorithm adopted by Moravec et al., 2022.

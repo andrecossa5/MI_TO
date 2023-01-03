@@ -17,221 +17,80 @@ path_main = '/Users/IEO5505/Desktop/MI_TO/'
 path_data = path_main + 'data/'
 path_results = path_main + 'results_and_plots/viz_clones/'
 sample = 'MDA'
-filtering = 'miller2022'
-min_cov_treshold = 30
-min_cell_number = 10
 
 # Read data
-orig = sc.read(path_data + f'/AFMs/{sample}_afm.h5ad')
-CBC_GBC = pd.read_csv(path_data + f'CBC_GBC_cells/CBC_GBC_{sample}.csv', index_col=0)
+afm = read_one_sample(path_main, 'MDA')
+a_cells, a = filter_cells_and_vars(afm, filtering='miller2022', min_cell_number=50, min_cov_treshold=50)
+colors = create_palette(a.obs, 'GBC', 'tab20')
+cell_anno = [ colors[clone] for clone in a.obs['GBC'] ]
+g = cells_vars_heatmap(a, cell_anno=cell_anno, anno_colors=colors, heat_label='AF', 
+    legend_label='Clone', figsize=(11, 8), title='Prova', cbar_position=(0.82, 0.2, 0.02, 0.25),
+)
 
-# Format variants AFM
-afm, variants = format_matrix(orig, CBC_GBC)
-ncells0 = afm.shape[0]
-n_all_clones = len(afm.obs['GBC'].unique())
+dir(g)
 
-# Filter cells and vars
-if filtering in ['CV', 'ludwig2019', 'velten2021', 'miller2022']:
-    # Cells
-    a_cells = filter_cells_coverage(afm, mean_coverage=min_cov_treshold) 
-    if min_cell_number > 0:
-        cell_counts = a_cells.obs.groupby('GBC').size()
-        clones_to_retain = cell_counts[cell_counts>min_cell_number].index 
-        cells_to_retain = a_cells.obs.query('GBC in @clones_to_retain').index
-        a_cells = a_cells[cells_to_retain, :].copy()
-    # Variants
-    if filtering == 'CV':
-        a = filter_CV(a_cells, n=50)
-    elif filtering == 'ludwig2019':
-        a = filter_ludwig2019(a_cells, mean_AF=0.5, mean_qual=0.2)
-    elif filtering == 'velten2021':
-        a = filter_velten2021(a_cells, mean_AF=0.1, min_cell_perc=0.2)
-    elif filtering == 'miller2022':
-        a = filter_miller2022(a_cells, mean_coverage=100, mean_qual=0.3, perc_1=0.001, perc_99=0.15)
-        
-elif filtering == 'density':
-    afm = filter_density(afm, density=0.5, steps=np.Inf)
-    if min_cell_number > 0:
-        cell_counts = afm.obs.groupby('GBC').size()
-        clones_to_retain = cell_counts[cell_counts>min_cell_number].index 
-        cells_to_retain = afm.obs.query('GBC in @clones_to_retain').index
-        a = afm[cells_to_retain, :].copy()
+
+dgram = g.dendrogram_row.dendrogram
+
+g.dendrogram_row.linkage
+
+dgram.keys()
+
+
+D = np.array(dgram['dcoord'])
+I = np.array(dgram['icoord'])
 
 
 
 
-# Nans robust primitives
-
-
-# def euclidean_python_nans(x, y):
-#     result = 0.0
-#     for i in range(x.shape[0]):
-#         if (~np.isnan(x[i])) and (~np.isnan(y[i])):
-#             result += (x[i] - y[i]) ** 2
-#     return np.sqrt(result)
-
-# @njit(fastmath=True, parallel=True)
-# def euclidean_pynn_nans(x, y):
-#     result = 0.0
-#     for i in prange(x.shape[0]):
-#         if (~np.isnan(x[i])) and (~np.isnan(y[i])):
-#             result += (x[i] - y[i]) ** 2
-#     return np.sqrt(result)
-
-# def test_primitive(f, size=10000, n_times=1000, nans=False):
-#     """
-#     Test a primitive function making a d(x,y) calculations n_times among two size sized 
-#     vectors, with or without a 0.5 ratio on nans.
-#     """
-#     np.random.seed(1234)
-#     x = np.random.random(size)
-#     np.random.seed(1453)
-#     y = np.random.random(size)
-# 
-#     t = Timer()
-#     t.start()
-# 
-#     for _ in range(n_times):
-#         d = f(x, y)
-# 
-#     print(f'Size: {size}; n_times: {n_times}; Execution: {t.stop():.3f} s')
+from pegasus.tools.hvf_selection import select_hvf_pegasus
 
 
 
-def euclidean_nans(x, y):
-    ix = np.where(~np.isnan(x))[0]
-    iy = np.where(~np.isnan(y))[0]
-    idx = list(set(ix) & set(iy))
-    x_ = x[idx]
-    y_ = y[idx]
-    return euclidean_std(x_, y_)
 
-def sqeuclidean_nans(x, y):
-    ix = np.where(~np.isnan(x))[0]
-    iy = np.where(~np.isnan(y))[0]
-    idx = list(set(ix) & set(iy))
-    x_ = x[idx]
-    y_ = y[idx]
-    return sqeuclidean(x_, y_)
-
-def correlation_nans(x, y):
-    ix = np.where(~np.isnan(x))[0]
-    iy = np.where(~np.isnan(y))[0]
-    idx = list(set(ix) & set(iy))
-    x_ = x[idx]
-    y_ = y[idx]
-    return correlation(x_, y_)
-
-def cosine_nans(x, y):
-    ix = np.where(~np.isnan(x))[0]
-    iy = np.where(~np.isnan(y))[0]
-    idx = list(set(ix) & set(iy))
-    x_ = x[idx]
-    y_ = y[idx]
-    return cosine(x_, y_)
-
-
-##
-
-
-x = np.linspace(0, 1, 100)
-x[np.random.randint(0, 100, size=10)] = np.nan
-y = np.linspace(2, 3, 100)
-y[np.random.randint(0, 100, size=10)] = np.nan
-
-cosine_nans(x, y)
-
-
-##
-
-
-def pair_d(X, **kwargs):
+def select_hvf_pegasus(
+    data: Union[MultimodalData, UnimodalData], batch: str, n_top: int = 2000, span: float = 0.02
+    ) -> None:
+    """ 
+    Select highly variable features using the pegasus method
     """
-    Function for calculating pairwise distances within the row vectors of a matrix X.
-    """
-    # Get kwargs
-    try:
-        metric = kwargs['metric']
-    except:
-        metric = 'euclidean'
-    try:
-        ncores = kwargs['ncores']
-    except:
-        ncores = 8
-    try:
-        nans = kwargs['nans']
-    except:
-        nans = False
 
-    print(f'pair_d arguments: metric={metric}, ncores={ncores}, nans={nans}')
+    estimate_feature_statistics(data, batch)
 
-    # Compute D
-    if not nans:
-        D = pairwise_distances(X, metric=metric, n_jobs=ncores)
-    else:
-        print(f'Custom, nan-robust {metric} metric will be used here...')
-        if metric == 'euclidean':
-            D = pairwise_distances(X, metric=euclidean_nans, n_jobs=ncores, force_all_finite=False)
-        elif metric == 'sqeuclidean':
-            D = pairwise_distances(X, metric=sqeuclidean_nans, n_jobs=ncores, force_all_finite=False)
-        elif metric == 'correlation':
-            D = pairwise_distances(X, metric=correlation_nans, n_jobs=ncores, force_all_finite=False)
-        elif metric == 'cosine':
-            D = pairwise_distances(X, metric=cosine_nans, n_jobs=ncores, force_all_finite=False)
+    robust_idx = data.var["robust"].values
+    hvf_index = np.zeros(afm.shape[1], dtype=bool)
 
-    return D
+    mean = data.var.loc[robust_idx, "mean"]
+    var = data.var.loc[robust_idx, "var"]
 
-##
+    span_value = span
+    while True:
+        lobj = fit_loess(mean, var, span = span_value, degree = 2)
+        if lobj is not None:
+            break
+        span_value += 0.01
+    if span_value > span:
+        logger.warning("Leoss span is adjusted from {:.2f} to {:.2f} to avoid fitting errors.".format(span, span_value))
 
-def test_matrix(f, rows=1000, cols=100, **kwargs):
-    """
-    Test a primitive function making a d(x,y) calculations n_times among two size sized 
-    vectors, with or without a 0.5 ratio on nans.
-    """
-    np.random.seed(1234)
-    X = np.random.rand(rows, cols)
+    rank1 = np.zeros(hvf_index.size, dtype=int)
+    rank2 = np.zeros(hvf_index.size, dtype=int)
 
-    if kwargs['nans']:
-        np.random.seed(1234)
-        rows_idx = np.random.randint(0, rows, size=rows//2)
-        np.random.seed(1234)
-        cols_idx = np.random.randint(0, cols, size=cols//2)
-        X[np.ix_(rows_idx, cols_idx)] = np.nan
+    delta = var - lobj.outputs.fitted_values
+    fc = var / lobj.outputs.fitted_values
 
-    t = Timer()
-    t.start()
+    rank1[np.argsort(delta)[::-1]] = range(hvf_index.size)
+    rank2[np.argsort(fc)[::-1]] = range(hvf_index.size)
+    hvf_rank = rank1 + rank2
 
-    D = f(X, **kwargs)
+    hvf_index[np.argsort(hvf_rank)[:n_top]] = True
 
-    print(f'Size: {rows * cols}; nrows {rows}; ncols {cols}; Execution: {t.stop():.3f} s')
+    data.var["hvf_loess"] = 0.0
+    data.var.loc[robust_idx, "hvf_loess"] = lobj.outputs.fitted_values
 
-
-##
-
-
-test_matrix(pair_d, rows=10000, cols=1000, metric='euclidean', nans=False)
-test_matrix(pair_d, rows=10000, cols=1000, metric='euclidean', nans=True)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+    data.var["hvf_rank"] = -1
+    data.var.loc[robust_idx, "hvf_rank"] = hvf_rank
+    data.var["highly_variable_features"] = False
+    data.var.loc[robust_idx, "highly_variable_features"] = hvf_index
 
 
 
