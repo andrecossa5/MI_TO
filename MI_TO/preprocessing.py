@@ -94,8 +94,11 @@ def format_matrix(A, cbc_gbc_df=None, no_clones=False):
     afm.layers['quality'] = qual
 
     # Per site slots, in 'uns'. Each matrix is a ncells x nsites matrix
-    afm.uns['per_position_coverage'] = A.layers['coverage'].toarray()
-    afm.uns['per_position_quality'] = quality
+    sites = [ str(i) for i in range(A.shape[1]) ]
+    afm.uns['per_position_coverage'] = pd.DataFrame(
+        A.layers['coverage'].toarray(), index=afm.obs_names, columns=sites
+    )
+    afm.uns['per_position_quality'] = pd.DataFrame(quality, index=afm.obs_names, columns=sites)
 
     gc.collect()
     
@@ -159,11 +162,26 @@ def filter_cells_coverage(afm, mean_coverage=100):
     """
     Simple filter to subset an AFM only for cells with at least n mean site coverage. 
     """
-    test_cells = np.mean(afm.uns['per_position_coverage'], axis=1) > mean_coverage 
+    test_cells = np.mean(afm.uns['per_position_coverage'].values, axis=1) > mean_coverage 
     filtered = afm[test_cells, :].copy()
-    filtered.uns['per_position_coverage'] = filtered.uns['per_position_coverage'][test_cells, :]
+    filtered.uns['per_position_coverage'] = filtered.uns['per_position_coverage'].loc[test_cells, :]
+    filtered.uns['per_position_quality'] = filtered.uns['per_position_quality'].loc[test_cells, :]
 
     return filtered
+
+
+##
+
+
+def remove_excluded_sites(afm):
+    """
+    Remove sites excluded from the AFM variants.
+    """
+    sites_retained = afm.var_names.map(lambda x: x.split('_')[0]).unique()
+    afm.uns['per_position_coverage'] = afm.uns['per_position_coverage'].loc[:, sites_retained]
+    afm.uns['per_position_quality'] = afm.uns['per_position_quality'].loc[:, sites_retained]
+
+    return afm
 
 
 ##
@@ -174,23 +192,21 @@ def filter_minimal(afm):
     Minimal filter on variants, applied before any other one.
     """
     # Site covered by at least (median) 10 UMIs
-    test_vars_considering_site = []
-    test_sites = np.median(afm.uns['per_position_coverage'], axis=0) > 10 
-    for x in afm.var_names:
-        i = int(x.split('_')[0])
-        if test_sites[i]:
-            test_vars_considering_site.append(True)
-        else:
-            test_vars_considering_site.append(False)
-    test_vars_considering_site = np.array(test_vars_considering_site)
-    
+    test_sites = pd.Series(
+        np.median(afm.uns['per_position_coverage'], axis=0) > 10,
+        index=afm.uns['per_position_coverage'].columns
+    )
+    sites = test_sites[test_sites].index
+    test_vars_site_coverage = afm.var_names.map(lambda x: x.split('_')[0] in sites).to_numpy(dtype=bool)
+
     # Variants seen by at least 5 UMIs and with an AFM of at least 0.01 in at least 5 cells
     test_vars_coverage = np.sum(afm.layers['coverage'] > 5, axis=0) > 5
     test_vars_AF = np.sum(afm.X > 0.01, axis=0) > 5
 
-    # Final test
-    test = test_vars_considering_site & test_vars_coverage & test_vars_AF
-    filtered = afm[:, test].copy()
+    # Filter vars and sites
+    test_vars = test_vars_site_coverage & test_vars_coverage & test_vars_AF
+    filtered = afm[:, test_vars].copy()
+    filtered = remove_excluded_sites(filtered)
 
     return filtered
 
@@ -202,9 +218,15 @@ def filter_CV(afm, n=100):
     """
     Filter variants based on their coefficient of variation.
     """
+    # Create test
     CV = np.nanmean(afm.X, axis=0) / np.nanvar(afm.X, axis=0)
-    variants = np.argsort(CV)[::-1][:n]
-    filtered = afm[:, variants].copy()
+    idx_vars = np.argsort(CV)[::-1][:n]
+    test_sites = np.unique([ int(x.split('_')[0]) for x in afm.var_names[idx_vars] ])
+
+    # Filter vars and sites
+    filtered = afm[:, idx_vars].copy()
+    filtered = remove_excluded_sites(filtered)
+
     return filtered
 
 
@@ -216,10 +238,15 @@ def filter_ludwig2019(afm, mean_AF=0.5, mean_qual=0.2):
     Filter variants based on fixed tresholds adopted in Ludwig et al., 2019, 
     in the xperiment without ATAC-seq reference.
     """
+    # Create test
     test_vars_het = np.nanmean(afm.X, axis=0) > mean_AF # highly heteroplasmic variants
     test_vars_qual = np.nanmean(afm.layers['quality'], axis=0) > mean_qual # high quality vars
     test_vars = test_vars_het & test_vars_qual
+
+    # Filter vars and sites
     filtered = afm[:, test_vars].copy()
+    filtered = remove_excluded_sites(filtered)
+
     return filtered
 
 
@@ -230,19 +257,22 @@ def filter_velten2021(afm, mean_AF=0.1, min_cell_perc=0.2):
     """
     Filter variants based on fixed tresholds adopted in Ludwig et al., 2021.
     """
-    test_vars_considering_site = []
-    test_sites = np.sum(afm.uns['per_position_coverage'] > 5, axis=0) > 20
-    for x in afm.var_names:
-        i = int(x.split('_')[0])
-        if test_sites[i]:
-            test_vars_considering_site.append(True)
-        else:
-            test_vars_considering_site.append(False)
-    test_vars_considering_site = np.array(test_vars_considering_site)
+    # Site covered by at least (median) 5 UMIs in 20 cells
+    test_sites = pd.Series(
+        np.sum(afm.uns['per_position_coverage'] > 5, axis=0) > 20,
+        index=afm.uns['per_position_coverage'].columns
+    )
+    sites = test_sites[test_sites].index
+    test_vars_site_coverage = afm.var_names.map(lambda x: x.split('_')[0] in sites).to_numpy(dtype=bool)
+
+    # Min avg heteroplasmy and min cell prevalence
     test_vars_het = np.nanmean(afm.X, axis=0) > mean_AF
     test_vars_exp = (np.sum(afm.X > 0, axis=0) / afm.shape[0]) > min_cell_perc
-    test_vars = test_vars_considering_site & test_vars_het & test_vars_exp
+    test_vars = test_vars_site_coverage & test_vars_het & test_vars_exp
+
+    # Filter vars and sites
     filtered = afm[:, test_vars].copy()
+    filtered = remove_excluded_sites(filtered)
 
     return filtered
 
@@ -253,19 +283,22 @@ def filter_miller2022(afm, mean_coverage=100, mean_qual=0.3, perc_1=0.01, perc_9
     """
     Filter variants based on adaptive adopted in Miller et al., 2022.
     """
-    test_vars_considering_site = []
-    test_sites = np.mean(afm.uns['per_position_coverage'], axis=0) > mean_coverage
-    for x in afm.var_names:
-        i = int(x.split('_')[0])
-        if test_sites[i]:
-            test_vars_considering_site.append(True)
-        else:
-            test_vars_considering_site.append(False)
-    test_vars_considering_site = np.array(test_vars_considering_site)
+    # Site covered by at least (median) 10 UMIs
+    test_sites = pd.Series(
+       np.mean(afm.uns['per_position_coverage'], axis=0) > mean_coverage,
+        index=afm.uns['per_position_coverage'].columns
+    )
+    sites = test_sites[test_sites].index
+    test_vars_site_coverage = afm.var_names.map(lambda x: x.split('_')[0] in sites).to_numpy(dtype=bool)
+
+    # Avg quality and percentile heteroplasmy tests
     test_vars_qual = np.nanmean(afm.layers['quality'], axis=0) > mean_qual
     test_vars_het = (np.percentile(afm.X, q=1, axis=0) < perc_1) & (np.percentile(afm.X, q=99, axis=0) > perc_99)
-    test_vars = test_vars_considering_site & test_vars_qual & test_vars_het
+    test_vars = test_vars_site_coverage & test_vars_qual & test_vars_het
+    
+    # Filter vars and sites
     filtered = afm[:, test_vars].copy()
+    filtered = remove_excluded_sites(filtered)
 
     return filtered
 
@@ -307,7 +340,8 @@ def filter_seurat(afm, nbins=50, n=2000, log=True):
     hvf_rank[ords[:n]] = range(n)
     select = np.where(hvf_rank != -1)[0]
     filtered = afm[:, select].copy()
-    
+    filtered = remove_excluded_sites(filtered) # Remove sites
+
     return filtered
 
 
@@ -345,6 +379,7 @@ def filter_pegasus(afm, span=0.02, n=2000):
     hvf_index = np.zeros(mean.size, dtype=bool)
     hvf_index[np.argsort(hvf_rank)[:n]] = True
     filtered = afm[:, hvf_index].copy()
+    filtered = remove_excluded_sites(filtered) # Remove sites
 
     return filtered
 
@@ -356,28 +391,35 @@ def filter_Mquad(afm, nproc=8, minDP=10, minAD=1, minCell=2, path_=None):
     """
     Filter variants using the Mquad method.
     """
-    # Get DP and AD counts matrices
-    DP = afm.uns['per_position_coverage'].T
+    # Get DP counts
+    DP = afm.uns['per_position_coverage'].T.values
     DP = coo_matrix(DP)
 
-    x = afm.var_names.to_list()
+    # Get AD counts
+    sites = afm.uns['per_position_coverage'].columns
+    variants = afm.var_names
+    # Check consistency sites/variants remaining after previous filters
+    test_1 = variants.map(lambda x: x.split('_')[0]).unique().isin(sites).all()
+    test_2 = sites.isin(variants.map(lambda x: x.split('_')[0]).unique()).all()
+    assert test_1 and test_2
+    # Get alternative allele variants
     ad_vars = []
-    pdio = 3106
-    i = 0
-    while i+3 <= afm.shape[1]:
-        if i != pdio*3:
-            vars_ = x[i:i+3]
-            cum_coverage = afm.layers['coverage'][:,i:i+3].sum(axis=0)
-            i += 3
-        elif i == pdio*3:
-            vars_ = x[i:i+4]
-            cum_coverage = afm.layers['coverage'][:, i:i+4].sum(axis=0)
-            i += 4
-        ad_vars.append(vars_[np.argmax(cum_coverage)])
+    only_sites_names = variants.map(lambda x: x.split('_')[0])
+    for x in sites:
+        test = only_sites_names == x
+        site_vars = variants[test]
+        if site_vars.size == 1:
+            ad_vars.append(site_vars[0])
+        else:
+            cum_sum = afm[:, site_vars].layers['coverage'].sum(axis=0)
+            idx_ad = np.argmax(cum_sum)
+            ad_vars.append(site_vars[idx_ad])
+    # Get AD counts
     AD = afm[:, ad_vars].layers['coverage'].T
     AD = coo_matrix(AD)
 
     # Select variants
+    assert DP.shape == AD.shape
     M = Mquad(AD=AD, DP=DP)
     df = M.fit_deltaBIC(out_dir=path_, nproc=nproc, minDP=minDP, beta_mode=False)
     best_ad, best_dp = M.selectInformativeVariants(
@@ -387,6 +429,7 @@ def filter_Mquad(afm, nproc=8, minDP=10, minAD=1, minCell=2, path_=None):
     selected_vars = [ ad_vars[i] for i in selected_idx ]
     # Subset matrix
     filtered = afm[:, selected_vars].copy()
+    filtered = remove_excluded_sites(filtered) # Remove sites
 
     return filtered
 
@@ -448,6 +491,8 @@ def filter_density(afm, density=0.5, steps=np.Inf):
             X_bool = X_bool[:, [ i for i in range(X_bool.shape[1]) if i not in lowest_density_cols ] ]
             afm = afm[:, [ i for i in range(afm.shape[1]) if i not in lowest_density_cols ] ].copy()
         i += 1
+
+    afm = remove_excluded_sites(afm) 
     
     return afm
 
@@ -470,8 +515,9 @@ def filter_cells_and_vars(afm, filtering=None, min_cell_number=None, min_cov_tre
             cell_counts = a_cells.obs.groupby('GBC').size()
             clones_to_retain = cell_counts[cell_counts>min_cell_number].index 
             test = a_cells.obs['GBC'].isin(clones_to_retain)
-            a_cells = a_cells[a_cells.obs_names[test], :].copy()
-            a_cells.uns['per_position_coverage'] = a_cells.uns['per_position_coverage'][test.astype(bool).values, :]
+            a_cells.uns['per_position_coverage'] = a_cells.uns['per_position_coverage'].loc[test, :]
+            a_cells.uns['per_position_quality'] = a_cells.uns['per_position_quality'].loc[test, :]
+            a_cells = a_cells[test, :].copy()
        
         # Variants
         a_cells = filter_minimal(a_cells)
@@ -498,6 +544,8 @@ def filter_cells_and_vars(afm, filtering=None, min_cell_number=None, min_cov_tre
             cell_counts = a.obs.groupby('GBC').size()
             clones_to_retain = cell_counts[cell_counts>min_cell_number].index 
             cells_to_retain = a.obs.query('GBC in @clones_to_retain').index
+            a.uns['per_position_coverage'] = a.uns['per_position_coverage'].loc[cells_to_retain, :]
+            a.uns['per_position_quality'] = a.uns['per_position_quality'].loc[cells_to_retain, :]
             a = a[cells_to_retain, :].copy()
 
     return a_cells, a

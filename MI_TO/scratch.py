@@ -20,9 +20,9 @@ sample = 'MDA'
 
 # Read data
 afm = read_one_sample(path_main, 'MDA')
-a_cells, a = filter_cells_and_vars(
-    afm, filtering='pegasus', min_cell_number=50, min_cov_treshold=50, n=5000
-)
+
+
+
 
 from dadapy.plot import plot_inf_imb_plane
 from dadapy.metric_comparisons import MetricComparisons
