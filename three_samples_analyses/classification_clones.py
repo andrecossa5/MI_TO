@@ -153,51 +153,22 @@ def main():
     logger.info(f'Execute classification: --sample {sample} --filtering {filtering} --model {model} --ncombos {ncombos} --score {score} --min_cell_number {min_cell_number} --min_cov_treshold {min_cov_treshold}')
 
     # Read data
-    orig = sc.read(path_data + f'/AFMs/{sample}_afm.h5ad')
-    CBC_GBC = pd.read_csv(path_data + f'CBC_GBC_cells/CBC_GBC_{sample}.csv', index_col=0)
-
-    # Format variants AFM
-    afm, variants = format_matrix(orig, CBC_GBC)
+    afm = read_one_sample(path_main, sample=sample)
     ncells0 = afm.shape[0]
     n_all_clones = len(afm.obs['GBC'].unique())
 
-    # Filter 'good quality cells': 
-    # 1: passing transcriptional QC (already done); 
-    # 2: having a mean MEASTER site coverage >= min_cov_treshold;
-    # 3: being from clones with >= min_cell_number cells;
-    # Only on 'good quality cells', filter variants. If density method is used, cells and genes are filtered jointly, 
-    # and no fixed treshold on MAESTER sites mean coverage is applied.
-
-    if filtering in ['CV', 'ludwig2019', 'velten2021', 'miller2022']:
-
-        # Cells
-        afm = filter_cells_coverage(afm, mean_coverage=min_cov_treshold) 
-        if min_cell_number > 0:
-            cell_counts = afm.obs.groupby('GBC').size()
-            clones_to_retain = cell_counts[cell_counts>min_cell_number].index 
-            cells_to_retain = afm.obs.query('GBC in @clones_to_retain').index
-            afm = afm[cells_to_retain, :].copy()
-
-        # Variants
-        if filtering == 'CV':
-            a = filter_CV(afm, n=50)
-        elif filtering == 'ludwig2019':
-            a = filter_ludwig2019(afm, mean_AF=0.5, mean_qual=0.2)
-        elif filtering == 'velten2021':
-            a = filter_velten2021(afm, mean_AF=0.1, min_cell_perc=0.2)
-        elif filtering == 'miller2022':
-            a = filter_miller2022(afm, mean_coverage=100, mean_qual=0.3, perc_1=0.01, perc_99=0.1)
-
-    elif filtering == 'density':
-        a = filter_density(afm, density=0.5, steps=np.Inf)
-        if min_cell_number > 0:
-            cell_counts = afm.obs.groupby('GBC').size()
-            clones_to_retain = cell_counts[cell_counts>min_cell_number].index 
-            cells_to_retain = afm.obs.query('GBC in @clones_to_retain').index
-            a = afm[cells_to_retain, :].copy()
-    
+    # Filter 'good quality' cells and variants
+    a_cells, a = filter_cells_and_vars(
+        afm, 
+        filtering=filtering, 
+        min_cell_number=min_cell_number, 
+        min_cov_treshold=min_cov_treshold, 
+        nproc=ncores, 
+        path_=path_results
+    )
+       
     # Format X and Y for classification
-    a = nans_as_zeros(a)
+    a = nans_as_zeros(a) # For sklearn APIs compatibility
     ncells = a.shape[0]
     n_clones_analyzed = len(a.obs['GBC'].unique())
     X = a.X
