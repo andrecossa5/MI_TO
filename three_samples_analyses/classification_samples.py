@@ -135,19 +135,7 @@ def main():
     logger.info(f'Execute classification: --filtering {filtering} --model {model} --ncombos {ncombos} --score {score} --min_cov_treshold {min_cov_treshold}')
 
     # Read and format data
-    ORIG = {}
-    samples = ['MDA', 'AML', 'PDX']
-    for x in samples:
-        orig = sc.read(path_data + f'AFMs/{x}_afm.h5ad')
-        orig.obs = orig.obs.assign(sample=x)
-        ORIG[x] = orig
-        meta_vars = orig.var
-    orig = anndata.concat(ORIG.values(), axis=0)
-    orig.var = meta_vars
-    del ORIG
-
-    # Create variants AFM 
-    afm, variants = format_matrix(orig, no_clones=True)
+    afm = read_all_samples(path_main, sample_list=['MDA', 'AML', 'PDX'])
     ncells0 = afm.shape[0]
 
     # Filter 'good quality cells': 
@@ -156,33 +144,27 @@ def main():
     # Only on 'good quality cells', filter variants. If density method is used, cells and genes are filtered jointly, 
     # and no fixed treshold on MAESTER sites mean coverage is applied.
 
-    if filtering in ['CV', 'ludwig2019', 'velten2021', 'miller2022']:
-
-        # Cells
-        afm = filter_cells_coverage(afm, mean_coverage=min_cov_treshold) 
-        # Variants
-        if filtering == 'CV':
-            a = filter_CV(afm, n=50)
-        elif filtering == 'ludwig2019':
-            a = filter_ludwig2019(afm, mean_AF=0.5, mean_qual=0.2)
-        elif filtering == 'velten2021':
-            a = filter_velten2021(afm, mean_AF=0.1, min_cell_perc=0.2)
-        elif filtering == 'miller2022':
-            a = filter_miller2022(afm, mean_coverage=100, mean_qual=0.3, perc_1=0.01, perc_99=0.1)
-
-    elif filtering == 'density':
-        a = filter_density(afm, density=0.5, steps=np.Inf)
-    
+    # Filter 'good quality' cells and variants
+    a_cells, a = filter_cells_and_vars(
+        afm, 
+        filtering=filtering, 
+        min_cell_number=0, 
+        min_cov_treshold=min_cov_treshold, 
+        nproc=ncores, 
+        path_=path_results
+    )
+       
     # Format X and Y for classification
-    a = nans_as_zeros(a)
+    a = nans_as_zeros(a) # For sklearn APIs compatibility
     ncells = a.shape[0]
     X = a.X
     feature_names = a.var_names
-    y = pd.Categorical(a.obs['sample'])
+    a.obs['sample'] = pd.Categorical(a.obs['sample'])
+    y = a.obs['sample']
     Y = one_hot_from_labels(y)
 
     logger.info(f'Reading and formatting AFM, X and y complete, total {t.stop()} s.')
-    logger.info(f'Total cells and clones in the original QCed dataset (only transcriptional and perturb seq QC metrics): {ncells0};')
+    logger.info(f'Total cells in the original QCed dataset (only transcriptional and perturb seq QC metrics): {ncells0};')
     logger.info(f'Total cells and variants in final filtered dataset: {ncells}; {a.shape[1]}.')
 
     # Here we go
