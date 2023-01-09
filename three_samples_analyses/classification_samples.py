@@ -159,8 +159,7 @@ def main():
     ncells = a.shape[0]
     X = a.X
     feature_names = a.var_names
-    a.obs['sample'] = pd.Categorical(a.obs['sample'])
-    y = a.obs['sample']
+    y = pd.Categorical(a.obs['sample'])
     Y = one_hot_from_labels(y)
 
     logger.info(f'Reading and formatting AFM, X and y complete, total {t.stop()} s.')
