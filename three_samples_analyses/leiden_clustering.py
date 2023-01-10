@@ -32,27 +32,11 @@ my_parser.add_argument(
     help='The path to the main project directory. Default: .. .'
 )
 
-# Filter
-my_parser.add_argument(
-    '--sample', 
-    type=str,
-    default='MDA',
-    help='Sample to use. Default: MDA.'
-)
-
-# Filter
-my_parser.add_argument(
-    '--analysis', 
-    type=str,
-    default=None,
-    help='Analysis from which distance matrices have to be taken. Default: None.'
-)
-
 # Resolution range
 my_parser.add_argument(
     '--range', 
     type=str,
-    default=0.2:1,
+    default='0.2:1',
     help='Resolution range for leiden clustering. Default: 0.2:1.'
 )
 
@@ -75,8 +59,6 @@ my_parser.add_argument(
 args = my_parser.parse_args()
 
 path_main = args.path_main
-sample = args.sample
-analysis = args.analysis
 res_range = args.range
 ncores = args.ncores 
 
@@ -104,7 +86,7 @@ if not args.skip:
     #-----------------------------------------------------------------#
 
     # Set logger 
-    logger = set_logger(path_runs, f'logs_{sample}_{analysis}.txt')
+    logger = set_logger(path_runs, f'leiden.txt')
 
 ########################################################################
 
@@ -117,7 +99,7 @@ def main():
     # Load data
     t = Timer()
 
-    logger.info(f'Execute leiden clustering: --sample {sample} --analysis {analysis}')
+    logger.info(f'Execute leiden clustering...')
 
     # Read top3 dictionary
     with open(path_clones + 'top3.pkl', 'rb') as f:
