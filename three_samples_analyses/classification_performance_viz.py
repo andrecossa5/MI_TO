@@ -287,7 +287,7 @@ for sample in sample_names:
             afm, 
             filtering=filtering,
             min_cell_number=min_cell_number,
-            min_cov_treshold=min_cov_treshold
+            min_cov_treshold=min_cov_treshold,
             path_=path_results
         )
         gc.collect()
