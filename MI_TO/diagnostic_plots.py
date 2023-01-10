@@ -424,7 +424,7 @@ def viz_clone_variants(afm, clone_name, sample=None, path=None, filtering=None,
         afm, 
         filtering=filtering,
         min_cell_number=min_cell_number,
-        min_cov_treshold=min_cov_treshold
+        min_cov_treshold=min_cov_treshold,
         path_=path
     )
     gc.collect()
