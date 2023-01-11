@@ -59,7 +59,7 @@ my_parser.add_argument(
 args = my_parser.parse_args()
 
 path_main = args.path_main
-res_range = args.range
+res_range = res_range = [ float(x) for x in args.range.split(':') ]
 ncores = args.ncores 
 
 ########################################################################
@@ -70,6 +70,7 @@ if not args.skip:
     # Code
     import pickle
     from Cellula._utils import Timer, set_logger
+    from Cellula.preprocessing._metrics import *
     from MI_TO.preprocessing import *
     from MI_TO.kNN import *
     from MI_TO.spectral_clustering import *
@@ -113,8 +114,9 @@ def main():
     samples_d = {}
     for i in range(len(samples)): 
 
-        top = top_analysis[i]
-        sample = samples[i]
+        top = top_analysis[i] # 'MDA_miller2022_50_100'
+        sample = samples[i] # 'MDA'
+        cbc_gbc = pd.read_csv(path_data + f'CBC_GBC_cells/CBC_GBC_{sample}.csv', index_col=0)
         
         # Read in a dictionary the distance matrices of its top analysis
         d = {}
@@ -127,6 +129,10 @@ def main():
         # For each distance...
         for key in DISTANCES:
             D = DISTANCES[key]
+            cells_ = D.obs_names
+            df_clones = cbc_gbc.loc[cells_, :]
+            true_clones = pd.Categorical(df_clones['GBC'])
+
             logger.info(f'Go with distance {key}...')
             t.start()
 
@@ -134,11 +140,13 @@ def main():
             for k in [5, 15, 30, 50, 100]:
                 kNN = kNN_graph(D.X, k=k, n_components=None)
 
-                # And partition them with different settings...
+                # Partition them with different resolutions, and calculate ARI with ground truth
                 for res in np.linspace(res_range[0], res_range[1], 5):
                     labels = leiden_clustering(kNN['connectivities'], res=res)
-                    d[f'{key}|{k}|{res}'] = labels
-                    logger.info(f'Finished with distance matrix {key}: {t.stop()}')
+                    ari = custom_ARI(labels, true_clones)
+                    d[f'{key}|{k}|{res}'] = (labels, true_clones, ari)
+
+            logger.info(f'Finished with distance matrix {key}: {t.stop()}')
 
         samples_d[sample] = d
 
