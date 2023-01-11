@@ -24,7 +24,7 @@ from MI_TO.diagnostic_plots import *
 
 # Set paths
 path_main = sys.argv[1]
-sample_names = sys.argv[2].split(';')
+sample_names = sys.argv[2].split(':')
 
 path_clones = path_main + '/results_and_plots/clones_classification/'
 path_samples = path_main + '/results_and_plots/samples_classification/'
