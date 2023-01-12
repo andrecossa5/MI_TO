@@ -17,7 +17,6 @@ from MI_TO.diagnostic_plots import sturges
 from MI_TO.heatmaps_plots import *
 from MI_TO.utils import *
 from MI_TO.diagnostic_plots import *
-matplotlib.use('macOSX')
 
 
 ##
@@ -27,7 +26,6 @@ matplotlib.use('macOSX')
 path_main = sys.argv[1]
 sample_names = sys.argv[2].split(':')
 
-path_main = '/Users/IEO5505/Desktop/MI_TO'
 path_clones = path_main + '/results_and_plots/clones_classification/'
 path_samples = path_main + '/results_and_plots/samples_classification/'
 path_results = path_main + '/results_and_plots/classification_performance/'
@@ -91,10 +89,9 @@ fig.savefig(path_results + 'median_f1_by_task.pdf')
 
 
 ############## f1 by clone and feat_type
-feat_type_colors = create_palette(clones, 'feature_type', 'Set1')
-
 fig, ax = plt.subplots(figsize=(12, 5))
 
+feat_type_colors = create_palette(clones, 'feature_type', 'Set1')
 params = {   
             'showcaps' : True,
             'fliersize': 0,
@@ -120,7 +117,6 @@ np.sum([ np.median(clones.query('comparison == @x')['f1']) > v for x in clones['
 ax.text(0.25, 0.8, f'-n clones with more than one classification above 0.5 f1: 6', transform=ax.transAxes)
 ax.text(0.25, 0.75, f'-n clones with more than one classification above 0.8 f1: 6', transform=ax.transAxes)
 ax.text(0.25, 0.7, f'-n clones with median f1 > 0.5: 1', transform=ax.transAxes)
-
 
 # Save
 fig.tight_layout()
@@ -228,6 +224,9 @@ for sample in clones['sample'].unique():
     top_3[sample] = clones.query('sample == @sample').groupby(['analysis']).agg(
         {'f1':np.median}).sort_values(
         'f1', ascending=False).index[:3].to_list()
+
+#with open(path_clones + 'top3.pkl', 'wb') as f:
+#    pickle.dump(top_3, f)
 
 # Load top3 variants for each sample clones, and visualize their intersection (i.e., J.I.), by sample
 top3_sample_variants = {}
@@ -423,7 +422,7 @@ for sample in sample_names:
 ##############
     
 
-##  
+##
 
 
 ############## 
@@ -438,7 +437,7 @@ df_ = pd.DataFrame(d).reset_index().rename(columns={'index':'analysis'}).melt(
     id_vars='analysis', var_name='sample', value_name='n_vars').dropna()
 
 # Viz 
-colors = {'MDA':'#DA5700', 'PDX':'#0F9221', 'AML':'#0074DA'}
+colors = {'MDA':'#DA5700', 'AML':'#0074DA', 'PDX':'#0F9221'}
 fig, ax = plt.subplots(figsize=(6,7))
 bar(df_, 'n_vars', x=None, by='sample', c=colors, ax=ax, s=0.75, annot_size=10)
 format_ax(df_, ax=ax, xticks=df_['analysis'], rotx=90, 
@@ -446,7 +445,7 @@ format_ax(df_, ax=ax, xticks=df_['analysis'], rotx=90,
 )
 handles = create_handles(colors.keys(), marker='o', colors=colors.values(), size=10, width=0.5)
 ax.legend(handles, colors.keys(), title='Sample', loc='upper right', 
-    bbox_to_anchor=(0.95, 0.95), ncol=1, frameon=False
+    bbox_to_anchor=(0.25, 0.95), ncol=1, frameon=False
 )
 fig.tight_layout()
 fig.savefig(path_results + 'n_top3_selected_variants.pdf')
@@ -507,6 +506,58 @@ for sample in sample_names:
 
             fig.savefig(path_results + f'top_3/{sample}/{topper}_features.pdf')
 ################
+
+
+##
+
+
+############## f1 by clone and feat_type
+
+# top_3['MDA']
+# top_clones_d['MDA']['clones']
+# 
+# clones.query('analysis in @top_3["MDA"]')
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+fig, ax = plt.subplots(figsize=(12, 5))
+params = {   
+            'showcaps' : True,
+            'fliersize': 0,
+            'boxprops' : {'edgecolor': 'black', 'linewidth': 0.3}, 
+            'medianprops': {"color": "black", "linewidth": 1},
+            'whiskerprops':{"color": "black", "linewidth": 1}
+        }
+box(clones, 'comparison', 'f1', c='#E9E7E7', ax=ax, params=params)
+strip(clones, 'comparison', 'f1', by='feature_type', c=feat_type_colors, s=2, ax=ax)
+format_ax(clones, ax, title='f1-scores by clone and variant selection method', rotx=90, xsize=5)
+create_handles(feat_type_colors.keys(), marker='o', colors=None, size=10, width=0.5)
+handles = create_handles(feat_type_colors.keys(), colors=feat_type_colors.values())
+fig.legend(handles, feat_type_colors.keys(), loc='upper right', 
+    bbox_to_anchor=(0.9, 0.9), ncol=2, frameon=False, title='Feature selection'
+)
+
+# Save
+fig.tight_layout()
+fig.savefig(path_results + 'clones_f1_only_top3_per_sample.pdf')
+##############
 
 
 
