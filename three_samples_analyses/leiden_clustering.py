@@ -114,8 +114,8 @@ def main():
     samples_d = {}
     for i in range(len(samples)): 
 
-        top = top_analysis[i] # 'MDA_miller2022_50_100'
-        sample = samples[i] # 'MDA'
+        top = top_analysis[i] 
+        sample = samples[i] 
         cbc_gbc = pd.read_csv(path_data + f'CBC_GBC_cells/CBC_GBC_{sample}.csv', index_col=0)
         
         # Read in a dictionary the distance matrices of its top analysis
@@ -123,7 +123,7 @@ def main():
         DISTANCES = {
             x.split('.')[0] : \
             sc.read(path_distances + x) for x in os.listdir(path_distances) \
-            if x.startswith(sample) and bool(re.search(top, x))
+            if bool(re.search('_'.join(top.split('_')[:-1]), x))
         }
     
         # For each distance...
