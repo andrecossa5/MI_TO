@@ -68,19 +68,19 @@ ax.text(0.42, 0.14, f' {np.median(clones["f1"]):.3f} ({clones["f1"].size} values
 ax.text(0.42, 0.11, f' {np.median(samples["f1"]):.3f} ({samples["f1"].size} values across all analyses)', transform=ax.transAxes)
 
 pdx_y = np.median(samples.query('comparison == "PDX_vs_rest"')['f1'])
-ax.annotate('PDX', xy=(0.93, pdx_y-0.01), xytext=(0.85, 0.9), arrowprops={"arrowstyle":"->", "color":"black"})
+ax.annotate('PDX', xy=(0.935, pdx_y-0.001), xytext=(0.7, 0.95), arrowprops={"arrowstyle":"->", "color":"black"})
 aml_y = np.median(samples.query('comparison == "AML_vs_rest"')['f1'])
-ax.annotate('AML', xy=(1.03, aml_y+ 0.01), xytext=(1.1, 0.48), arrowprops={"arrowstyle":"->", "color":"black"})
+ax.annotate('AML', xy=(1.03, aml_y), xytext=(1.1, 0.6), arrowprops={"arrowstyle":"->", "color":"black"})
 mda_y = np.median(samples.query('comparison == "MDA_vs_rest"')['f1'])
-ax.annotate('MDA', xy=(1.03, mda_y), xytext=(1.15, 0.87), arrowprops={"arrowstyle":"->", "color":"black"})
+ax.annotate('MDA', xy=(0.99, mda_y), xytext=(1.15, 0.87), arrowprops={"arrowstyle":"->", "color":"black"})
 
 top_3_clones = clones_agg.sort_values('f1', ascending=False).head(3)
 clone_y = top_3_clones['f1'][0]
-ax.annotate(top_3_clones.index[0].split('_')[0], xy=(-0.03, clone_y+0.01), xytext=(-0.25, 0.7), arrowprops={"arrowstyle":"->", "color":"black"})
+ax.annotate(top_3_clones.index[0].split('_')[0], xy=(-0.03, clone_y+0.01), xytext=(-0.25, 0.82), arrowprops={"arrowstyle":"->", "color":"black"})
 clone_y = top_3_clones['f1'][1]
-ax.annotate(top_3_clones.index[1].split('_')[0], xy=(-0.05, clone_y+0.01), xytext=(-0.40, 0.38), arrowprops={"arrowstyle":"->", "color":"black"})
+ax.annotate(top_3_clones.index[1].split('_')[0], xy=(-0.08, clone_y-0.01), xytext=(-0.45, 0.53), arrowprops={"arrowstyle":"->", "color":"black"})
 clone_y = top_3_clones['f1'][2]
-ax.annotate(top_3_clones.index[2].split('_')[0], xy=(0.03, clone_y-0.01), xytext=(-0.40, 0.20), arrowprops={"arrowstyle":"->", "color":"black"})
+ax.annotate(top_3_clones.index[2].split('_')[0], xy=(0.09, clone_y), xytext=(0.1, 0.65), arrowprops={"arrowstyle":"->", "color":"black"})
 
 # Save
 fig.savefig(path_results + 'median_f1_by_task.pdf')
@@ -117,9 +117,9 @@ np.sum([ np.sum(clones.query('comparison == @x')['f1'] > v) > 0 for x in clones[
 v = 0.5
 np.sum([ np.median(clones.query('comparison == @x')['f1']) > v for x in clones['comparison'].unique() ])
 
-ax.text(0.2, 0.8, f'-n clones with more than one classification above 0.5 f1: 6', transform=ax.transAxes)
-ax.text(0.2, 0.75, f'-n clones with more than one classification above 0.8 f1: 6', transform=ax.transAxes)
-ax.text(0.2, 0.7, f'-n clones with median f1 > 0.5: 1', transform=ax.transAxes)
+ax.text(0.25, 0.8, f'-n clones with more than one classification above 0.5 f1: 6', transform=ax.transAxes)
+ax.text(0.25, 0.75, f'-n clones with more than one classification above 0.8 f1: 6', transform=ax.transAxes)
+ax.text(0.25, 0.7, f'-n clones with median f1 > 0.5: 1', transform=ax.transAxes)
 
 
 # Save
@@ -134,20 +134,20 @@ fig.savefig(path_results + 'clones_f1.pdf')
 ############## f1 by sample and feat_type
 fig, ax = plt.subplots(figsize=(8, 6.8))
 
-box(clones, 'sample', 'f1', ax=ax, c='#E9E7E7', params=params)
+box(clones, 'sample', 'f1', ax=ax, s=0.5, c='#E9E7E7', params=params)
 strip(clones, 'sample', 'f1', by='feature_type', c=feat_type_colors, s=3, ax=ax)
-format_ax(clones, ax, title='Clones f1-scores by sample and variant selection method')
-create_handles(feat_type_colors.keys(), marker='o', colors=None, size=10, width=0.5)
+format_ax(clones, ax, title='Clones f1-scores by sample and variant selection method', ylabel='f1')
+create_handles(feat_type_colors.keys(), marker='o', colors=None, size=10, width=0.75)
 handles = create_handles(feat_type_colors.keys(), colors=feat_type_colors.values())
+fig.subplots_adjust(right=0.75)
 fig.legend(handles, feat_type_colors.keys(), loc='center', 
-    bbox_to_anchor=(0.8, 0.75), ncol=1, frameon=False, title='Feature selection'
+    bbox_to_anchor=(0.85, 0.6), ncol=1, frameon=False, title='Feature selection'
 )
-ax.text(0.7, 0.5, f'Mean f1 clones MDA: {clones.loc[clones["sample"]=="AML"]["f1"].mean():.3f}', transform=ax.transAxes)
-ax.text(0.7, 0.47, f'Mean f1 clones AML: {clones.loc[clones["sample"]=="MDA"]["f1"].mean():.3f}', transform=ax.transAxes)
-ax.text(0.7, 0.44, f'Mean f1 clones PDX: {clones.loc[clones["sample"]=="PDX"]["f1"].mean():.3f}', transform=ax.transAxes)
+ax.text(1.05, 0.4, f'Mean MDA: {clones.loc[clones["sample"]=="AML"]["f1"].mean():.3f}', transform=ax.transAxes)
+ax.text(1.05, 0.36, f'Mean AML: {clones.loc[clones["sample"]=="MDA"]["f1"].mean():.3f}', transform=ax.transAxes)
+ax.text(1.05, 0.32, f'Mean PDX: {clones.loc[clones["sample"]=="PDX"]["f1"].mean():.3f}', transform=ax.transAxes)
 
 # Save
-fig.tight_layout()
 fig.savefig(path_results + 'clones_f1_by_sample.pdf')
 ##############
 
@@ -160,16 +160,16 @@ fig.savefig(path_results + 'clones_f1_by_sample.pdf')
 fig, ax = plt.subplots(figsize=(8, 6.5))
 
 box(clones, 'model', 'f1', ax=ax, c='#E9E7E7', params=params)
-strip(clones, 'model', 'f1', by='feature_type', c=feat_type_colors, s=2, ax=ax)
+strip(clones, 'model', 'f1', by='feature_type', c=feat_type_colors, s=3, ax=ax)
 format_ax(clones, ax, title='Clones f1-scores by model and variant selection method', ylabel='f1')
 create_handles(feat_type_colors.keys(), marker='o', colors=None, size=10, width=0.5)
 handles = create_handles(feat_type_colors.keys(), colors=feat_type_colors.values())
 fig.subplots_adjust(right=0.75)
 fig.legend(handles, feat_type_colors.keys(), loc='center', 
-    bbox_to_anchor=(0.85, 0.7), ncol=1, frameon=False, title='Feature selection'
+    bbox_to_anchor=(0.85, 0.6), ncol=1, frameon=False, title='Feature selection'
 )
-ax.text(1.04, 0.45, f'Mean xgboost: {clones.loc[clones["model"]=="xgboost"]["f1"].mean():.3f}', transform=ax.transAxes)
-ax.text(1.04, 0.42, f'Mean logit: {clones.loc[clones["model"]=="logit"]["f1"].mean():.3f}', transform=ax.transAxes)
+ax.text(1.05, 0.39, f'Mean xgboost: {clones.loc[clones["model"]=="xgboost"]["f1"].mean():.3f}', transform=ax.transAxes)
+ax.text(1.05, 0.36, f'Mean logit: {clones.loc[clones["model"]=="logit"]["f1"].mean():.3f}', transform=ax.transAxes)
 
 # Save
 fig.savefig(path_results + 'clones_f1_by_model.pdf')
