@@ -35,7 +35,7 @@ def cell_depth_dist(afm, ax=None, color='b', title=None):
         t = 'MASTER library cell depth (nUMIs)'
     else:
         t = title
-    format_ax(afm.obs, ax=ax, title=t, xlabel='total nUMIs', ylabel='n cells')
+    format_ax(ax=ax, title=t, xlabel='total nUMIs', ylabel='n cells')
 
     median = np.median(afm.obs['depth'])
     r = (afm.obs['depth'].min(), afm.obs['depth'].max())
@@ -65,7 +65,7 @@ def cell_n_sites_covered_dist(afm, ax=None, color='b', title=None):
         t = 'n covered sites (total=16569), per cell'
     else:
         t = title
-    format_ax(df_, ax=ax, title=t, xlabel='n sites covered', ylabel='n cells')
+    format_ax(ax=ax, title=t, xlabel='n sites covered', ylabel='n cells')
 
     r = (df_['n'].min(), df_['n'].max())
     ax.text(0.05, 0.9, f'Median: {round(np.median(df_["n"]))}', transform=ax.transAxes)
@@ -90,7 +90,7 @@ def cell_n_vars_detected_dist(afm, ax=None, color='b', title=None):
         t = 'n detected variants (total=16569*3), per cell'
     else:
         t = title
-    format_ax(df_, ax=ax, title=t, xlabel='n variants detected', ylabel='n cells')
+    format_ax(ax=ax, title=t, xlabel='n variants detected', ylabel='n cells')
 
     r = (df_['n'].min(), df_['n'].max())
     ax.text(0.6, 0.9, f'Median: {round(np.median(df_["n"]))}', transform=ax.transAxes)
@@ -116,7 +116,7 @@ def cell_median_site_quality_dist(afm, ax=None, color='b', title=None):
         t = 'Median base quality, per cell'
     else:
         t = title
-    format_ax(df_, ax=ax, title=t, xlabel='Phred score', ylabel='n cells')
+    format_ax(ax=ax, title=t, xlabel='Phred score', ylabel='n cells')
 
     median = np.median(df_['qual'])
     r = (df_['qual'].min(), df_['qual'].max())
@@ -144,7 +144,7 @@ def site_median_coverage_dist(afm, ax=None, color='b', title=None):
         t = 'Median (across cells) MT sites (total=16569) coverage (nUMIs)'
     else:
         t = title
-    format_ax(df_, ax=ax, title=t, xlabel='total nUMIs', ylabel='n sites')
+    format_ax(ax=ax, title=t, xlabel='total nUMIs', ylabel='n sites')
 
     ax.set_xlim((-50, 800))
     median = round(np.median(df_['cov']))
@@ -171,7 +171,7 @@ def site_median_quality_dist(afm, ax=None, color='b', title=None):
         t = 'MASTER library median quality, per site'
     else:
         t = title
-    format_ax(df_, ax=ax, title=t, xlabel='Phred score', ylabel='n sites')
+    format_ax(ax=ax, title=t, xlabel='Phred score', ylabel='n sites')
 
     median = np.median(df_['qual'])
     r = (df_['qual'].min(), df_['qual'].max())
@@ -200,7 +200,7 @@ def vars_n_positive_dist(afm, ax=None, color='b', title=None):
         t = 'n positive cells, per variant'
     else:
         t = title
-    format_ax(df_, ax=ax, title=t, xlabel='n cells+', ylabel='n variants')
+    format_ax(ax=ax, title=t, xlabel='n cells+', ylabel='n variants')
     
     #ax.set_ylim((0, 1.5))
     r = (df_['n'].min(), df_['n'].max())
@@ -230,7 +230,7 @@ def vars_AF_dist(afm, ax=None, color='b', title=None):
         t = 'Ranked AF distributions, per variant'
     else:
         t = title
-    format_ax(pd.DataFrame(x), ax=ax, title=t, xlabel='Cell rank', ylabel='AF')
+    format_ax(ax=ax, title=t, xlabel='Cell rank', ylabel='AF')
 
     return ax
 
@@ -287,7 +287,7 @@ def vars_strand_conc_dist(orig, variants, ax=None, color='b', title=None):
         t = 'Strand concordances distribution'
     else:
         t = title
-    format_ax(strand_conc, ax=ax, title=t, xlabel="Pearson's r", ylabel='n variants') 
+    format_ax(ax=ax, title=t, xlabel="Pearson's r", ylabel='n variants') 
 
     median = np.median(strand_conc['corr'])
     r = (strand_conc['corr'].min(), strand_conc['corr'].max())
@@ -314,7 +314,7 @@ def AF_mean_strand_conc_corr(orig, variants, afm, ax=None, color='b', title=None
         t = 'AF mean-strand concordance trend, per variant'
     else:
         t = title
-    format_ax(df_, ax=ax, title=t, xlabel='Mean', ylabel='pho')
+    format_ax(ax=ax, title=t, xlabel='Mean', ylabel='pho')
 
     test = df_['mean'] < 0.6
     x = df_['mean'][test]
@@ -346,7 +346,7 @@ def AF_mean_var_corr(afm, ax=None, color='b', title=None):
         t = 'AF mean-variance trend'
     else:
         t = title
-    format_ax(df_, ax=ax, title=t, xlabel='Mean', ylabel='Variance')
+    format_ax(ax=ax, title=t, xlabel='Mean', ylabel='Variance')
 
     test = df_['mean'] < 0.6
     x = df_['mean'][test]
@@ -400,7 +400,7 @@ def positive_events_by_var_type(afm, orig, ax=None, color=None, title=None):
         t = '\n% of + events over total + events'
     else:
         t = title
-    format_ax(df_, ax=ax, title=t, xticks=df_.index, ylabel='\n%')
+    format_ax(ax=ax, title=t, xticks=df_.index, ylabel='\n%')
 
     return ax
 
@@ -442,7 +442,7 @@ def viz_clone_variants(afm, clone_name, sample=None, path=None, filtering=None,
         feat=lambda x: np.where(x.index == clone_name, clone_name, 'other')
         )
     bar(df_, 'n_cells', by='feat', c=colors, s=0.75, ax=axs[0,0])
-    format_ax(df_, ax=axs[0,0], 
+    format_ax(ax=axs[0,0], 
         title=f'{sample} clonal abundances', 
         xticks='', xlabel='Clones', ylabel='n cells', xsize=8, rotx=90
     )
@@ -509,7 +509,7 @@ def viz_clone_variants(afm, clone_name, sample=None, path=None, filtering=None,
             'feature', 'value', by='status', c={'non-selected':colors['non-selected'], 'selected':colors['selected']}, ax=axins
         )
 
-    format_ax(df_vars, ax=axins, xticks=['density', 'median_AF'])
+    format_ax(ax=axins, xticks=['density', 'median_AF'])
 
     ##
 
@@ -545,7 +545,7 @@ def viz_clone_variants(afm, clone_name, sample=None, path=None, filtering=None,
             elif var in vars_selected:
                 axs[1,0].plot(x, '--', color=colors['selected'], linewidth=0.5)
 
-    format_ax(pd.DataFrame(x), ax=axs[1,0], title='Ranked AFs', xlabel='Cell rank', ylabel='AF')
+    format_ax(ax=axs[1,0], title='Ranked AFs', xlabel='Cell rank', ylabel='AF')
 
     # handles = create_handles(colors.keys(), marker='o', colors=colors.values(), size=10, width=0.5)
     # axs[1,0].legend(handles, colors.keys(), title='Variant', loc='upper left', 
@@ -556,7 +556,7 @@ def viz_clone_variants(afm, clone_name, sample=None, path=None, filtering=None,
 
     # Sub4: Feature importance of top10 muts
     stem_plot(class_df, 'effect_size', ax=axs[1,1])
-    format_ax(class_df, ax=axs[1,1], yticks='', ylabel='Selected variants', xlabel='Feature importance', 
+    format_ax(ax=axs[1,1], yticks='', ylabel='Selected variants', xlabel='Feature importance', 
         title=f"Analysis: {filtering}_{min_cell_number}_{min_cov_treshold}_{model}")
     top_vars = class_df.index[:3]
     axs[1,1].text(0.25, 0.1, f"Top 3 variants: {top_vars[0]}, {top_vars[1]}, {top_vars[2]}", transform=axs[1,1].transAxes)
