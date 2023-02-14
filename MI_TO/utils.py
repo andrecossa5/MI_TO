@@ -2,9 +2,12 @@
 Miscellaneous utilities.
 """
 
+import pickle
 import numpy as np
 import pandas as pd
 import scanpy as sc
+
+from .preprocessing import read_one_sample
 
 
 ##
@@ -39,3 +42,37 @@ def summary_stats_vars(afm, variants=None):
     )
 
     return df
+
+
+##
+
+
+def prep_things_for_umap(top_runs_per_sample, i, solutions, connectivities, path_main=None):
+    """
+    Utility used in leiden performance viz.
+    """
+    # Get top solutions
+    d_run = top_runs_per_sample.iloc[i, :].to_dict()
+
+    # Prepare ingredients for embs calculations
+    s = d_run['sample']
+    a = '_'.join(d_run['analysis'].split('_')[1:])
+
+    path_ = path_main + f'results_and_plots/classification_performance/top_3/{s}/{a}/cell_x_var_hclust.pickle'
+
+    with open(path_, 'rb') as f:
+        d_cell_x_var = pickle.load(f)
+
+    cells = d_cell_x_var['cells']
+    variants = d_cell_x_var['vars']
+
+    afm = read_one_sample(path_main, sample=s)
+    X = afm[cells, variants].X.copy()
+
+    conn_name = f'{d_run["analysis"]}_{d_run["with_nans"]}_{d_run["metric"]}_None'
+    leiden_pickle_name = f'{d_run["analysis"]}_{d_run["with_nans"]}_{d_run["metric"]}_None|{d_run["k"]}|{d_run["res"]}'
+
+    labels, true_clones, ARI = solutions[s][leiden_pickle_name]
+    conn = connectivities[s][conn_name]
+
+    return X, conn, cells, true_clones, labels, ARI, d_run

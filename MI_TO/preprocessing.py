@@ -500,7 +500,7 @@ def filter_density(afm, density=0.5, steps=np.Inf):
 ##
 
 
-def filter_cells_and_vars(afm, filtering=None, min_cell_number=None, min_cov_treshold=None, 
+def filter_cells_and_vars(afm, filtering=None, min_cell_number=None, min_cov_treshold=None, variants=None,
     nproc=8, path_=None, n=2000):
     """
     Filter cells and vars from an afm.
@@ -547,5 +547,16 @@ def filter_cells_and_vars(afm, filtering=None, min_cell_number=None, min_cov_tre
             a.uns['per_position_coverage'] = a.uns['per_position_coverage'].loc[cells_to_retain, :]
             a.uns['per_position_quality'] = a.uns['per_position_quality'].loc[cells_to_retain, :]
             a = a[cells_to_retain, :].copy()
+    
+    elif filtering is None and variants is not None:
+        a_cells = filter_cells_coverage(afm, mean_coverage=min_cov_treshold)
+        if min_cell_number > 0:
+            cell_counts = a_cells.obs.groupby('GBC').size()
+            clones_to_retain = cell_counts[cell_counts>min_cell_number].index 
+            test = a_cells.obs['GBC'].isin(clones_to_retain)
+            a_cells.uns['per_position_coverage'] = a_cells.uns['per_position_coverage'].loc[test, :]
+            a_cells.uns['per_position_quality'] = a_cells.uns['per_position_quality'].loc[test, :]
+            a_cells = a_cells[test, :].copy()
+        a = a_cells[:, variants].copy()
 
     return a_cells, a

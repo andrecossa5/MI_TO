@@ -71,17 +71,22 @@ if not args.skip:
     import pickle
     from Cellula._utils import Timer, set_logger
     from Cellula.preprocessing._metrics import *
+    from Cellula.plotting._plotting_base import *
+    from Cellula.plotting._colors import *
     from MI_TO.preprocessing import *
     from MI_TO.kNN import *
     from MI_TO.spectral_clustering import *
+    from MI_TO.dimensionality_reduction import *
 
     #-----------------------------------------------------------------#
 
     # Set other paths
+    #path_main = '/Users/IEO5505/Desktop/MI_TO/'
     path_data = path_main + '/data/'
     path_distances = path_main + '/results_and_plots/distances/'
     path_clones = path_main + '/results_and_plots/clones_classification/'
     path_results = path_main + '/results_and_plots/leiden_clustering/'
+    path_class_performance = path_main + '/results_and_plots/classification_performance/'
     path_runs = path_main + '/runs/'
 
     #-----------------------------------------------------------------#
@@ -111,7 +116,9 @@ def main():
     top_analysis = [ top3[k][0] for k in top3 ]
     
     # For each sample and its top analysis...
-    samples_d = {}
+    solutions_d = {}
+    connectivities_d = {}
+
     for i in range(len(samples)): 
 
         top = top_analysis[i] 
@@ -119,7 +126,8 @@ def main():
         cbc_gbc = pd.read_csv(path_data + f'CBC_GBC_cells/CBC_GBC_{sample}.csv', index_col=0)
         
         # Read in a dictionary the distance matrices of its top analysis
-        d = {}
+        sol_d = {}
+        conn_d = {}
         DISTANCES = {
             x.split('.')[0] : \
             sc.read(path_distances + x) for x in os.listdir(path_distances) \
@@ -138,21 +146,28 @@ def main():
 
             # Compute kNN graphs... 
             for k in [5, 15, 30, 50, 100]:
-                kNN = kNN_graph(D.X, k=k, n_components=None)
+                kNN = kNN_graph(D.X, k=k)
+                conn = kNN['connectivities']
+                conn_d[key] = conn                 
 
                 # Partition them with different resolutions, and calculate ARI with ground truth
                 for res in np.linspace(res_range[0], res_range[1], 5):
-                    labels = leiden_clustering(kNN['connectivities'], res=res)
+                    labels = leiden_clustering(conn, res=res)
                     ari = custom_ARI(labels, true_clones)
-                    d[f'{key}|{k}|{res}'] = (labels, true_clones, ari)
+                    sol_d[f'{key}|{k}|{res}'] = (labels, true_clones, ari)
 
             logger.info(f'Finished with distance matrix {key}: {t.stop()}')
 
-        samples_d[sample] = d
+        solutions_d[sample] = sol_d
+        connectivities_d[sample] = conn_d
 
-    # Save dictionary
-    with open(path_results + 'leiden_clustering.pkl', 'wb') as f:
-        pickle.dump(samples_d, f)
+
+    # Save dictionaries
+    with open(path_results + 'solutions.pkl', 'wb') as f:
+        pickle.dump(solutions_d, f)
+
+    with open(path_results + 'connectivities.pkl', 'wb') as f:
+        pickle.dump(connectivities_d, f)
                     
     #-----------------------------------------------------------------#
 
@@ -167,3 +182,4 @@ if __name__ == "__main__":
         main()
 
 #######################################################################
+

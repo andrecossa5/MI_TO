@@ -409,23 +409,22 @@ def positive_events_by_var_type(afm, orig, ax=None, color=None, title=None):
 
 
 def viz_clone_variants(afm, clone_name, sample=None, path=None, filtering=None, 
-    min_cell_number=None, min_cov_treshold=None, model=None, figsize=(10, 10)):
+    min_cell_number=None, min_cov_treshold=None, model=None, figsize=(12, 10)):
     """
     Visualization summary of the properties of a clone distiguishing variants, within some analysis context
     """
 
     # Read clone classification report
-    file = f'clones_{sample}_{filtering}_{min_cell_number}_{min_cov_treshold}_{model}_f1.xlsx'
-    class_df = pd.read_excel(path + file, index_col=0)
+    file_name = f'clones_{sample}_{filtering}_{min_cell_number}_{min_cov_treshold}_{model}_f1.xlsx'
+    class_df = pd.read_excel(path + file_name, index_col=0)
     class_df = class_df.loc[class_df['comparison'] == f'{clone_name}_vs_rest']
 
     # Filter sample AFM as done in the classification picked
     a_cells, a = filter_cells_and_vars(
         afm, 
-        filtering=filtering,
         min_cell_number=min_cell_number,
         min_cov_treshold=min_cov_treshold,
-        path_=path
+        variants=class_df.index
     )
     gc.collect()
 
@@ -437,10 +436,10 @@ def viz_clone_variants(afm, clone_name, sample=None, path=None, filtering=None,
     fig, axs = plt.subplots(2, 2, figsize=figsize, constrained_layout=True)
 
     # Sub 1: clone size in its sample
-    colors = {'other':'grey', 'top':'red'}
+    colors = {'other':'grey', clone_name:'red'}
     df_ = a_cells.obs.groupby('GBC').size().to_frame().rename(
         columns={0:'n_cells'}).sort_values('n_cells', ascending=False).assign(
-        feat=lambda x: np.where(x.index == clone_name, 'top', 'other')
+        feat=lambda x: np.where(x.index == clone_name, clone_name, 'other')
         )
     bar(df_, 'n_cells', by='feat', c=colors, s=0.75, ax=axs[0,0])
     format_ax(df_, ax=axs[0,0], 
@@ -449,7 +448,7 @@ def viz_clone_variants(afm, clone_name, sample=None, path=None, filtering=None,
     )
     handles = create_handles(colors.keys(), colors=colors.values())
     axs[0,0].legend(handles, colors.keys(), loc='upper right', 
-        title='Clone', frameon=False, bbox_to_anchor=(0.90, 0.95)
+        title='Clone', frameon=False, bbox_to_anchor=(0.98, 0.95)
     )
     axs[0,0].text(0.6, 0.60, f"min_cell_number: {min_cell_number}", transform=axs[0,0].transAxes)
     axs[0,0].text(0.6, 0.55, f"min_cov_treshold: {min_cov_treshold}", transform=axs[0,0].transAxes)
@@ -529,9 +528,9 @@ def viz_clone_variants(afm, clone_name, sample=None, path=None, filtering=None,
             x = to_plot.X[:, i]
             x = np.sort(x)
             if var in vars_non_selected:
-                axs[1,0].plot(x, '--', color=colors['non-selected'], linewidth=0.05)
+                axs[1,0].plot(x, '--', color=colors['non-selected'], linewidth=0.01)
             elif var in vars_selected:
-                axs[1,0].plot(x, '--', color=colors['selected'], linewidth=0.5)
+                axs[1,0].plot(x, '--', color=colors['selected'], linewidth=0.3)
             elif var in vars_top10:
                 axs[1,0].plot(x, '--', color=colors['top10'], linewidth=2)
     else:
@@ -542,7 +541,7 @@ def viz_clone_variants(afm, clone_name, sample=None, path=None, filtering=None,
             x = to_plot.X[:, i]
             x = np.sort(x)
             if var in vars_non_selected:
-                axs[1,0].plot(x, '--', color=colors['non-selected'], linewidth=0.1)
+                axs[1,0].plot(x, '--', color=colors['non-selected'], linewidth=0.01)
             elif var in vars_selected:
                 axs[1,0].plot(x, '--', color=colors['selected'], linewidth=0.5)
 
@@ -557,7 +556,10 @@ def viz_clone_variants(afm, clone_name, sample=None, path=None, filtering=None,
 
     # Sub4: Feature importance of top10 muts
     stem_plot(class_df, 'effect_size', ax=axs[1,1])
-    format_ax(class_df, ax=axs[1,1], ysize=2, title='Feature importance')
+    format_ax(class_df, ax=axs[1,1], yticks='', ylabel='Selected variants', xlabel='Feature importance', 
+        title=f"Analysis: {filtering}_{min_cell_number}_{min_cov_treshold}_{model}")
+    top_vars = class_df.index[:3]
+    axs[1,1].text(0.25, 0.1, f"Top 3 variants: {top_vars[0]}, {top_vars[1]}, {top_vars[2]}", transform=axs[1,1].transAxes)
 
     # Save
     fig.suptitle(f'{clone_name} clone features')

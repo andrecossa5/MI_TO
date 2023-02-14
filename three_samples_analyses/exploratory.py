@@ -25,11 +25,13 @@ path_results = path_main + 'results_and_plots/exploratory/'
 ORIG = {}
 AFMs = {}
 
+os.listdir(path_main + f'data/AFMs/')
+
 samples = ['MDA', 'AML', 'PDX']
 for x in samples:
     orig = sc.read(path_main + f'data/AFMs/{x}_afm.h5ad')
     CBC_GBC = pd.read_csv(path_main + f'data/CBC_GBC_cells/CBC_GBC_{x}.csv', index_col=0)
-    afm, variants = format_matrix(orig, CBC_GBC)
+    afm = format_matrix(orig, CBC_GBC)
     afm.obs = afm.obs.assign(sample=x)
     AFMs[x] = afm
     ORIG[x] = orig
