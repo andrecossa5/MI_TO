@@ -131,6 +131,8 @@ path_main <- '/Users/IEO5505/Desktop/MI_TO/'
 path_results <- paste0(path_main, '/results_and_plots/phylo/')
 path_phylo_data <- paste0(path_main, '/data/phylo_input/')
 
+?paste0
+
 # Read charachter and euclidean distance matrices for each sample
 for (sample in c('AML', 'MDA', 'PDX')) {
 

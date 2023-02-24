@@ -16,25 +16,42 @@ from pegasus.tools.hvf_selection import fit_loess
 
 
 ##
-    
 
-def create_one_base_tables(A, base, full=False):
-    '''
+
+filtering_options = [
+    'CV',
+    'ludwig2019', 
+    'velten2021', 
+    'miller2022', 
+    'seurat', 
+    'pegasus', 
+    'MQuad', 
+    'DADApy',
+    'density'
+]
+
+
+##
+
+
+def create_one_base_tables(A, base, only_variants=True):
+    """
     Create a full cell x variant AFM from the original maegatk output, and one of the 4 bases,
-    create the allelic frequency df for that base, a cell x {pos}_{base} table.
-    '''
-    cov = A.layers[f'{base}_counts_fw'].toarray() + A.layers[f'{base}_counts_rev'].toarray()
-    X = cov / A.layers['coverage'].toarray()
-    q = A.layers[f'{base}_qual_fw'] + A.layers[f'{base}_qual_rev']
-    m = np.where(A.layers[f'{base}_qual_fw'].toarray() > 0, 1, 0) + np.where(A.layers[f'{base}_qual_rev'].toarray() > 0, 1, 0)
-    qual = q.toarray() / m
+    create the allelic frequency df for that base, a cell x {i}_{ref}>{base} table.
+    """
+    cov = A.layers[f'{base}_counts_fw'].A + A.layers[f'{base}_counts_rev'].A
+    X = cov / A.layers['coverage'].A
+    q = A.layers[f'{base}_qual_fw'].A + A.layers[f'{base}_qual_rev'].A
+    m = np.where(A.layers[f'{base}_qual_fw'].A > 0, 1, 0) + np.where(A.layers[f'{base}_qual_rev'].A > 0, 1, 0)
+    qual = q / m
 
-    df_cov = pd.DataFrame(data=cov, index=A.obs_names, columns=[ f'{pos}_{base}' for pos in range(A.shape[1]) ])
-    df_x = pd.DataFrame(data=X, index=A.obs_names, columns=[ f'{pos}_{base}' for pos in range(A.shape[1]) ])
-    df_qual = pd.DataFrame(data=qual, index=A.obs_names, columns=[ f'{pos}_{base}' for pos in range(A.shape[1]) ])
+    variant_names = [ f'{i}_{ref}>{base}' for i, ref in enumerate(A.var['refAllele'].values) ]
+    df_cov = pd.DataFrame(cov, index=A.obs_names, columns=variant_names)
+    df_x = pd.DataFrame(X, index=A.obs_names, columns=variant_names)
+    df_qual = pd.DataFrame(qual, index=A.obs_names, columns=variant_names)
     gc.collect()
 
-    if not full:
+    if only_variants:
         test = (A.var['refAllele'] != base).values
         return df_cov.loc[:, test], df_x.loc[:, test], df_qual.loc[:, test]
     else:
@@ -44,14 +61,14 @@ def create_one_base_tables(A, base, full=False):
 ##
 
 
-def format_matrix(A, cbc_gbc_df=None, no_clones=False):
+def format_matrix(A, cbc_gbc_df=None, with_clones=True):
     """
     Create a full cell x variant AFM from the original maegatk output. 
     Add lentiviral clones' labels to resulting .obs.
     """
 
     # Add labels to .obs
-    if not no_clones:
+    if with_clones:
         A.obs = A.obs.join(cbc_gbc_df)
         A.obs['GBC'] = pd.Categorical(A.obs['GBC'])
     # add A fw counts to layers
@@ -66,25 +83,23 @@ def format_matrix(A, cbc_gbc_df=None, no_clones=False):
     # Concat all of them in three complete coverage, AF and quality matrices, for each variant from the ref
     cov = pd.concat([A_cov, C_cov, T_cov, G_cov], axis=1)
     X = pd.concat([A_x, C_x, T_x, G_x], axis=1)
-    qual = pd.concat([A_cov, C_cov, T_cov, G_cov], axis=1)
+    qual = pd.concat([A_qual, C_qual, T_qual, G_qual], axis=1)
     assert (cov.shape[1] % 3 == 1) and (X.shape[1] % 3 == 1) and (qual.shape[1] % 3 == 1) # Check dimensions
 
     # Reorder columns...
-    ref_allele = [ f'{i}_{base}' for i, base in enumerate(A.var['refAllele']) ]
-    variants = []
-    for i in range(A.shape[1]):
-        variants += [ f'{i}_{base}' for base in ['A', 'C', 'T', 'G'] if f'{i}_{base}' not in ref_allele ] 
-    cov = cov.loc[:, variants]
-    X = X.loc[:, variants]
-    qual = qual.loc[:, variants]
+    variants = X.columns.map(lambda x: x.split('_')[0]).astype('int').values
+    idx = np.argsort(variants)
+    cov = cov.iloc[:, idx]
+    X = X.iloc[:, idx]
+    qual = qual.iloc[:, idx]
 
     # Create the per position quality matrix
     quality = np.zeros(A.shape)
     n_times = np.zeros(A.shape)
     for k in A.layers:
         if bool(re.search('qual', k)):
-            quality += A.layers[k].toarray()
-            r, c = np.nonzero(A.layers[k].toarray())
+            quality += A.layers[k].A
+            r, c = np.nonzero(A.layers[k].A)
             n_times[r, c] += 1
     quality = quality / n_times
 
@@ -96,10 +111,9 @@ def format_matrix(A, cbc_gbc_df=None, no_clones=False):
     # Per site slots, in 'uns'. Each matrix is a ncells x nsites matrix
     sites = [ str(i) for i in range(A.shape[1]) ]
     afm.uns['per_position_coverage'] = pd.DataFrame(
-        A.layers['coverage'].toarray(), index=afm.obs_names, columns=sites
+        A.layers['coverage'].A, index=afm.obs_names, columns=sites
     )
     afm.uns['per_position_quality'] = pd.DataFrame(quality, index=afm.obs_names, columns=sites)
-
     gc.collect()
     
     return afm
@@ -112,9 +126,9 @@ def read_one_sample(path_main, sample=None):
     """
     Read and format one sample AFM.
     """
-    orig = sc.read(path_main + f'data/AFMs/{sample}_afm.h5ad')
-    CBC_GBC = pd.read_csv(path_main + f'data/CBC_GBC_cells/CBC_GBC_{sample}.csv', index_col=0)
-    afm = format_matrix(orig, CBC_GBC)
+    A = sc.read(path_main + f'data/AFMs/{sample}_afm.h5ad')
+    cbc_gbc_df = pd.read_csv(path_main + f'data/CBC_GBC_cells/CBC_GBC_{sample}.csv', index_col=0)
+    afm = format_matrix(A, cbc_gbc_df)
     afm.obs = afm.obs.assign(sample=sample)
 
     return afm
@@ -136,9 +150,39 @@ def read_all_samples(path_main, sample_list=None):
     orig = anndata.concat(ORIG.values(), axis=0)
     orig.var = meta_vars
     del ORIG
-    afm = format_matrix(orig, no_clones=True)
+    afm = format_matrix(orig, with_clones=False)
 
     return afm
+
+
+##
+
+
+def create_blacklist_table(path_main, sample_list=['MDA', 'AML', 'PDX']):
+    """
+    Creates a summary stat table to exclude further variants, common to more samples.
+    """
+    afm = read_all_samples(path_main, sample_list=sample_list)
+    DFs = []
+    for x in afm.obs['sample'].unique():
+        cells = afm.obs.query('sample == @x').index
+        x_sample = afm[cells, :].X.copy()
+        cov_sample = afm[cells, :].layers['coverage'].copy()
+        n_positives = np.sum(x_sample > 0, axis=0)
+        perc_positives = n_positives / len(cells)
+        n_cells_more_than_5_umis = np.sum(cov_sample > 5, axis=0)
+        df_sample = pd.DataFrame({
+            'n_pos' : n_positives,
+            'perc_pos' : perc_positives,
+            'n_cells_more_than_5_umis' : n_cells_more_than_5_umis,
+            'sample' : [x] * afm.shape[1]
+        })
+        df_sample.index = afm.var_names
+        DFs.append(df_sample)
+
+    df = pd.concat(DFs)
+
+    return df
 
 
 ##
@@ -158,11 +202,12 @@ def nans_as_zeros(afm):
 ##
 
 
-def filter_cells_coverage(afm, mean_coverage=100):
+def filter_cells_coverage(afm, mean_coverage=50):
     """
-    Simple filter to subset an AFM only for cells with at least n mean site coverage. 
+    Simple filter to subset an AFM only for cells with at least <median_coverage> median site coverage. 
     """
-    test_cells = np.mean(afm.uns['per_position_coverage'].values, axis=1) > mean_coverage 
+    test_cells = np.nanmean(afm.uns['per_position_coverage'].values, axis=1) > mean_coverage
+    test_cells.sum()
     filtered = afm[test_cells, :].copy()
     filtered.uns['per_position_coverage'] = filtered.uns['per_position_coverage'].loc[test_cells, :]
     filtered.uns['per_position_quality'] = filtered.uns['per_position_quality'].loc[test_cells, :]
@@ -175,7 +220,7 @@ def filter_cells_coverage(afm, mean_coverage=100):
 
 def remove_excluded_sites(afm):
     """
-    Remove sites excluded from the AFM variants.
+    Remove sites belonging to non-selected AFM variants.
     """
     sites_retained = afm.var_names.map(lambda x: x.split('_')[0]).unique()
     afm.uns['per_position_coverage'] = afm.uns['per_position_coverage'].loc[:, sites_retained]
@@ -187,24 +232,51 @@ def remove_excluded_sites(afm):
 ##
 
 
-def filter_minimal(afm):
+def remove_from_blacklist(variants, df, sample='MDA'):
     """
-    Minimal filter on variants, applied before any other one.
+    Remove variants share by other samples.
     """
-    # Site covered by at least (median) 10 UMIs
+    df_sample = df.loc[variants,:].query('sample == @sample')
+    test = df_sample['perc_pos'].values > 0.01
+    other_samples = [ x for x in df['sample'].unique() if x != sample]
+    for x in other_samples:
+        df_ = df.loc[variants,:].query('sample == @x')
+        test &= ~(df_['n_pos'].values > 10)
+
+    return variants[test]
+
+
+##
+
+
+def filter_baseline(afm):
+    """
+    Baseline filter, applied on all variants, before any method-specific solution.
+    This is a very mild filter to exclude all variants that will be pretty much impossible
+    to use by any method due to:
+    * extremely low coverage at which the variant site have been observed across the population
+    * extremely low quality at which the variant site have been observed across the population
+    * Too less cells in which the variant have been detected with AF >1% 
+    """
+    # Test 1: variants whose site has been covered by nUMIs >= 10 (mean, over all cells)
     test_sites = pd.Series(
-        np.median(afm.uns['per_position_coverage'], axis=0) > 10,
+        np.mean(afm.uns['per_position_coverage'], axis=0) > 10,
         index=afm.uns['per_position_coverage'].columns
     )
     sites = test_sites[test_sites].index
-    test_vars_site_coverage = afm.var_names.map(lambda x: x.split('_')[0] in sites).to_numpy(dtype=bool)
+    test_vars_site_coverage = afm.var_names.map(
+        lambda x: x.split('_')[0] in sites).to_numpy(dtype=bool)
 
-    # Variants seen by at least 5 UMIs and with an AFM of at least 0.01 in at least 5 cells
-    test_vars_coverage = np.sum(afm.layers['coverage'] > 5, axis=0) > 5
-    test_vars_AF = np.sum(afm.X > 0.01, axis=0) > 5
+    # Test 2-4: 
+    # variants with quality > 20 (mean, over all cells); 
+    # variants seen in at least 3 cells;
+    # variants with AF>0.01 in at least 3 cells;
+    test_vars_quality = np.nanmean(afm.layers['quality'], axis=0) > 20
+    test_vars_coverage = np.sum(afm.layers['coverage'] > 0, axis=0) > 3
+    test_vars_AF = np.sum(afm.X > 0.01, axis=0) > 3
 
     # Filter vars and sites
-    test_vars = test_vars_site_coverage & test_vars_coverage & test_vars_AF
+    test_vars = test_vars_site_coverage & test_vars_quality & test_vars_coverage & test_vars_AF 
     filtered = afm[:, test_vars].copy()
     filtered = remove_excluded_sites(filtered)
 
@@ -214,14 +286,13 @@ def filter_minimal(afm):
 ##
 
 
-def filter_CV(afm, n=100):
+def filter_CV(afm, n=1000):
     """
     Filter variants based on their coefficient of variation.
     """
     # Create test
     CV = np.nanmean(afm.X, axis=0) / np.nanvar(afm.X, axis=0)
     idx_vars = np.argsort(CV)[::-1][:n]
-    test_sites = np.unique([ int(x.split('_')[0]) for x in afm.var_names[idx_vars] ])
 
     # Filter vars and sites
     filtered = afm[:, idx_vars].copy()
@@ -233,10 +304,10 @@ def filter_CV(afm, n=100):
 ##
 
 
-def filter_ludwig2019(afm, mean_AF=0.5, mean_qual=0.2):
+def filter_ludwig2019(afm, mean_AF=0.5, mean_qual=20):
     """
     Filter variants based on fixed tresholds adopted in Ludwig et al., 2019, 
-    in the xperiment without ATAC-seq reference.
+    in the experiment without ATAC-seq reference, Fig.7.
     """
     # Create test
     test_vars_het = np.nanmean(afm.X, axis=0) > mean_AF # highly heteroplasmic variants
@@ -253,11 +324,11 @@ def filter_ludwig2019(afm, mean_AF=0.5, mean_qual=0.2):
 ##
 
 
-def filter_velten2021(afm, mean_AF=0.1, min_cell_perc=0.2):
+def filter_velten2021(afm, blacklist=None, sample=None, mean_AF=0.1, min_cell_perc=0.2):
     """
     Filter variants based on fixed tresholds adopted in Ludwig et al., 2021.
     """
-    # Site covered by at least (median) 5 UMIs in 20 cells
+    # Site covered by at least 5 UMIs (median) in 20 cells
     test_sites = pd.Series(
         np.sum(afm.uns['per_position_coverage'] > 5, axis=0) > 20,
         index=afm.uns['per_position_coverage'].columns
@@ -269,9 +340,14 @@ def filter_velten2021(afm, mean_AF=0.1, min_cell_perc=0.2):
     test_vars_het = np.nanmean(afm.X, axis=0) > mean_AF
     test_vars_exp = (np.sum(afm.X > 0, axis=0) / afm.shape[0]) > min_cell_perc
     test_vars = test_vars_site_coverage & test_vars_het & test_vars_exp
+    candidate_vars = afm.var_names[test_vars]
+
+    # Remove from blacklist.
+    if blacklist is not None:
+        passing_vars = remove_from_blacklist(candidate_vars, blacklist, sample=sample)
 
     # Filter vars and sites
-    filtered = afm[:, test_vars].copy()
+    filtered = afm[:, passing_vars].copy()
     filtered = remove_excluded_sites(filtered)
 
     return filtered
@@ -279,7 +355,8 @@ def filter_velten2021(afm, mean_AF=0.1, min_cell_perc=0.2):
 ##
 
 
-def filter_miller2022(afm, mean_coverage=100, mean_qual=0.3, perc_1=0.01, perc_99=0.1):
+def filter_miller2022(afm, mean_coverage=100, mean_qual=30, 
+    perc_1=0.01, perc_99=0.1): 
     """
     Filter variants based on adaptive adopted in Miller et al., 2022.
     """
@@ -295,9 +372,10 @@ def filter_miller2022(afm, mean_coverage=100, mean_qual=0.3, perc_1=0.01, perc_9
     test_vars_qual = np.nanmean(afm.layers['quality'], axis=0) > mean_qual
     test_vars_het = (np.percentile(afm.X, q=1, axis=0) < perc_1) & (np.percentile(afm.X, q=99, axis=0) > perc_99)
     test_vars = test_vars_site_coverage & test_vars_qual & test_vars_het
-    
+    candidate_vars = afm.var_names[test_vars]
+
     # Filter vars and sites
-    filtered = afm[:, test_vars].copy()
+    filtered = afm[:, candidate_vars].copy()
     filtered = remove_excluded_sites(filtered)
 
     return filtered
@@ -306,9 +384,9 @@ def filter_miller2022(afm, mean_coverage=100, mean_qual=0.3, perc_1=0.01, perc_9
 ##
 
 
-def filter_seurat(afm, nbins=50, n=2000, log=True):
+def filter_seurat(afm, nbins=50, n=1000, log=True):
     """
-    Filter in a procedure akin to scanpy/seurat.
+    Filter with the scanpy/seurat flavour, readapted from scanpy.
     """
     # Calc stats
     X = afm.X
@@ -348,9 +426,9 @@ def filter_seurat(afm, nbins=50, n=2000, log=True):
 ##
 
 
-def filter_pegasus(afm, span=0.02, n=2000):
+def filter_pegasus(afm, span=0.02, n=1000):
     """
-    Filter in a procedure akin to scanpy/seurat.
+    Filter with the method implemented in pegasus.
     """
     # Get means and vars
     X = afm.X
@@ -387,7 +465,7 @@ def filter_pegasus(afm, span=0.02, n=2000):
 ##
 
 
-def filter_Mquad(afm, nproc=8, minDP=10, minAD=1, minCell=2, path_=None):
+def filter_Mquad(afm, nproc=8, minDP=10, minAD=1, minCell=3, path_=None):
     """
     Filter variants using the Mquad method.
     """
@@ -421,7 +499,7 @@ def filter_Mquad(afm, nproc=8, minDP=10, minAD=1, minCell=2, path_=None):
     # Select variants
     assert DP.shape == AD.shape
     M = Mquad(AD=AD, DP=DP)
-    df = M.fit_deltaBIC(out_dir=path_, nproc=nproc, minDP=minDP, beta_mode=False)
+    df = M.fit_deltaBIC(out_dir=path_, nproc=nproc, minDP=minDP, minAD=minAD)
     best_ad, best_dp = M.selectInformativeVariants(
         min_cells=minCell, out_dir=path_, tenx_cutoff=None, export_heatmap=False, export_mtx=False
     )
@@ -450,7 +528,8 @@ def filter_DADApy(afm, ):
 
 def filter_density(afm, density=0.5, steps=np.Inf):
     """
-    Jointly filter cells and variants based on the iterative filtering algorithm adopted by Moravec et al., 2022.
+    Jointly filter cells and variants based on the iterative filtering algorithm 
+    adopted by Moravec et al., 2022.
     """
     # Get AF matrix, convert into a df
     logger = logging.getLogger("my_logger")
@@ -500,63 +579,92 @@ def filter_density(afm, density=0.5, steps=np.Inf):
 ##
 
 
-def filter_cells_and_vars(afm, filtering=None, min_cell_number=None, min_cov_treshold=None, variants=None,
-    nproc=8, path_=None, n=2000):
+def filter_cells_and_vars(
+    afm, blacklist=None, sample=None, filtering=None, min_cell_number=None, 
+    min_cov_treshold=None, variants=None, nproc=8, path_=None, n=1000):
     """
     Filter cells and vars from an afm.
     """ 
-    if filtering in [
-        'CV', 'ludwig2019', 'velten2021', 'miller2022', 'seurat', 'pegasus', 'MQuad', 'DADApy'
-    ]:
+    logger = logging.getLogger("my_logger")
+    logger.info(f'Filter cells and variants for the original AFM...')
 
+    if filtering in filtering_options and filtering != 'density':
         # Cells
+        logger.info(f'Feature selection method: {filtering}')
+        logger.info(f'Filtering cells with >{min_cov_treshold} coverage')
         a_cells = filter_cells_coverage(afm, mean_coverage=min_cov_treshold)
+        logger.info(f'Original AFM n cells: {afm.shape[0]}')
+        logger.info(f'Filtered AFM n cells: {a_cells.shape[0]}')
+        logger.info(f'Removed n {afm.shape[0]-a_cells.shape[0]} cells')
         if min_cell_number > 0:
+            n_cells = a_cells.shape[0]
+            logger.info(f'Filtering cells from clones with >{min_cell_number} cells')
             cell_counts = a_cells.obs.groupby('GBC').size()
             clones_to_retain = cell_counts[cell_counts>min_cell_number].index 
             test = a_cells.obs['GBC'].isin(clones_to_retain)
             a_cells.uns['per_position_coverage'] = a_cells.uns['per_position_coverage'].loc[test, :]
             a_cells.uns['per_position_quality'] = a_cells.uns['per_position_quality'].loc[test, :]
             a_cells = a_cells[test, :].copy()
+            logger.info(f'Removed other {n_cells-a_cells.shape[0]} cells')
+            logger.info(f'Retaining {a_cells.obs["GBC"].unique().size} clones for the analysis.')
        
         # Variants
-        a_cells = filter_minimal(a_cells)
+        a_cells = filter_baseline(a_cells)
         if filtering == 'CV':
             a = filter_CV(a_cells, n=100)
         elif filtering == 'ludwig2019':
-            a = filter_ludwig2019(a_cells, mean_AF=0.5, mean_qual=0.2)
+            a = filter_ludwig2019(a_cells)
         elif filtering == 'velten2021':
-            a = filter_velten2021(a_cells, mean_AF=0.1, min_cell_perc=0.2)
+            a = filter_velten2021(a_cells, blacklist=blacklist, sample=sample)
         elif filtering == 'miller2022':
-            a = filter_miller2022(a_cells, mean_coverage=100, mean_qual=0.3, perc_1=0.01, perc_99=0.1)
+            a = filter_miller2022(a_cells)
         elif filtering == 'seurat':
-            a = filter_seurat(a_cells, nbins=50, n=n, log=True)
+            a = filter_seurat(a_cells, n=n)
         elif filtering == 'pegasus':
-            a = filter_pegasus(a_cells, span=0.02, n=n)
+            a = filter_pegasus(a_cells, n=n)
         elif filtering == 'MQuad':
-            a = filter_Mquad(a_cells, nproc=nproc, minDP=10, minAD=1, minCell=2, path_=path_)
+            a = filter_Mquad(a_cells, nproc=nproc, path_=path_)
         elif filtering == 'DADApy':
             a = filter_DADApy(a_cells,...)
 
     elif filtering == 'density':
-        a = filter_density(afm, density=0.5, steps=np.Inf)
+        a_cells = filter_cells_coverage(afm, mean_coverage=min_cov_treshold)
         if min_cell_number > 0:
-            cell_counts = a.obs.groupby('GBC').size()
+            n_cells = a_cells.shape[0]
+            logger.info(f'Filtering cells from clones with >{min_cell_number} cells')
+            cell_counts = a_cells.obs.groupby('GBC').size()
             clones_to_retain = cell_counts[cell_counts>min_cell_number].index 
-            cells_to_retain = a.obs.query('GBC in @clones_to_retain').index
-            a.uns['per_position_coverage'] = a.uns['per_position_coverage'].loc[cells_to_retain, :]
-            a.uns['per_position_quality'] = a.uns['per_position_quality'].loc[cells_to_retain, :]
-            a = a[cells_to_retain, :].copy()
-    
+            cells_to_retain = a_cells.obs.query('GBC in @clones_to_retain').index
+            a_cells = a_cells[cells_to_retain, :].copy()
+            a_cells.uns['per_position_coverage'] = a_cells.uns['per_position_coverage'].loc[cells_to_retain, :]
+            a_cells.uns['per_position_quality'] = a_cells.uns['per_position_quality'].loc[cells_to_retain, :]
+            logger.info(f'Removed other {n_cells-a_cells.shape[0]} cells')
+            logger.info(f'Retaining {a_cells.obs["GBC"].unique().size} clones for the analysis.')
+        a_cells = filter_baseline(a_cells)
+        a = filter_density(a_cells)
+
     elif filtering is None and variants is not None:
         a_cells = filter_cells_coverage(afm, mean_coverage=min_cov_treshold)
         if min_cell_number > 0:
+            n_cells = a_cells.shape[0]
+            logger.info(f'Filtering cells from clones with >{min_cell_number} cells')
             cell_counts = a_cells.obs.groupby('GBC').size()
             clones_to_retain = cell_counts[cell_counts>min_cell_number].index 
             test = a_cells.obs['GBC'].isin(clones_to_retain)
             a_cells.uns['per_position_coverage'] = a_cells.uns['per_position_coverage'].loc[test, :]
             a_cells.uns['per_position_quality'] = a_cells.uns['per_position_quality'].loc[test, :]
             a_cells = a_cells[test, :].copy()
+            logger.info(f'Removed other {n_cells-a_cells.shape[0]} cells')
+            logger.info(f'Retaining {a_cells.obs["GBC"].unique().size} clones for the analysis.')
         a = a_cells[:, variants].copy()
+    
+    else:
+        raise ValueError(f'The provided filtering method {filtering} is not supported. Choose another one...')
+
+    logger.info(f'Filtered feature matrix contains {a.shape[0]} cells and {a.shape[1]} variants.')
 
     return a_cells, a
+
+
+
+

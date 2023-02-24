@@ -47,6 +47,22 @@ my_parser.add_argument(
     help='Method to filter MT-SNVs. Default: ludwig2019.'
 )
 
+# Dimred
+my_parser.add_argument(
+    '--dimred', 
+    type=str,
+    default=None,
+    help='Method to reduce the dimension of the SNVs space (top 1000 SNVs selected) by pegasus. Default: None.'
+)
+
+# Dimred
+my_parser.add_argument(
+    '--n_comps', 
+    type=int,
+    default=30,
+    help='n of components in the dimensionality reduction step. Default: 30.'
+)
+
 # Model
 my_parser.add_argument(
     '--model', 
@@ -114,6 +130,8 @@ ncores = args.ncores
 score = args.score
 min_cell_number = args.min_cell_number
 min_cov_treshold = args.min_cov_treshold
+dimred = args.dimred
+n_comps = args.n_comps
 
 ########################################################################
 
@@ -125,10 +143,21 @@ if not args.skip:
     from Cellula.ML._ML import *
     from Cellula.dist_features._dist_features import *
     from MI_TO.preprocessing import *
+    from MI_TO.dimred import *
 
     #-----------------------------------------------------------------#
 
     # Set other paths
+    # path_main = '/Users/IEO5505/Desktop/MI_TO/'
+    # sample = 'MDA'
+    # filtering = 'miller2022'
+    # model = 'xgboost'
+    # ncombos = 50
+    # ncores = 8
+    # score = 'f1'
+    # min_cell_number = 10
+    # min_cov_treshold = 50
+
     path_data = path_main + '/data/'
     path_results = path_main + '/results_and_plots/clones_classification/'
     path_runs = path_main + '/runs/'
@@ -150,35 +179,63 @@ def main():
     t = Timer()
     t.start()
 
-    logger.info(f'Execute classification: --sample {sample} --filtering {filtering} --model {model} --ncombos {ncombos} --score {score} --min_cell_number {min_cell_number} --min_cov_treshold {min_cov_treshold}')
+    logger.info(f'Execute classification: --sample {sample} --filtering {filtering} --dimred {dimred} --model {model} --ncombos {ncombos} --score {score} --min_cell_number {min_cell_number} --min_cov_treshold {min_cov_treshold}')
 
     # Read data
     afm = read_one_sample(path_main, sample=sample)
     ncells0 = afm.shape[0]
     n_all_clones = len(afm.obs['GBC'].unique())
+    blacklist = pd.read_csv(path_data + 'blacklist.csv', index_col=0)
+
+    ##
 
     # Filter 'good quality' cells and variants
-    a_cells, a = filter_cells_and_vars(
-        afm, 
-        filtering=filtering, 
-        min_cell_number=min_cell_number, 
-        min_cov_treshold=min_cov_treshold, 
-        nproc=ncores, 
-        path_=path_results
-    )
-       
-    # Format X and Y for classification
-    a = nans_as_zeros(a) # For sklearn APIs compatibility
-    ncells = a.shape[0]
-    n_clones_analyzed = len(a.obs['GBC'].unique())
-    X = a.X
-    feature_names = a.var_names
-    y = pd.Categorical(a.obs['GBC'])
-    Y = one_hot_from_labels(y)
+    if dimred is None:
 
-    logger.info(f'Reading and formatting AFM, X and y complete, total {t.stop()} s.')
-    logger.info(f'Total cells and clones in the original QCed sample (only transcriptional and perturb seq QC metrics): {ncells0}; {n_all_clones}.')
-    logger.info(f'Total cells, clones and variants in final filtered sample: {ncells}; {n_clones_analyzed}, {a.shape[1]}.')
+        _, a = filter_cells_and_vars(
+            afm,
+            blacklist=blacklist,
+            sample=sample,
+            filtering=filtering, 
+            min_cell_number=min_cell_number, 
+            min_cov_treshold=min_cov_treshold, 
+            nproc=ncores, 
+            path_=path_results
+        )
+
+        # Extract X, y
+        a = nans_as_zeros(a) # For sklearn APIs compatibility
+        ncells = a.shape[0]
+        n_clones_analyzed = len(a.obs['GBC'].unique())
+        X = a.X
+        feature_names = a.var_names
+        y = pd.Categorical(a.obs['GBC'])
+        Y = one_hot_from_labels(y)
+
+    else:
+
+        _, a = filter_cells_and_vars(
+            afm,
+            sample=sample,
+            filtering='CV', 
+            min_cell_number=min_cell_number, 
+            min_cov_treshold=min_cov_treshold, 
+            nproc=ncores
+        )
+
+        # Extract X, y
+        a = nans_as_zeros(a) # For sklearn APIs compatibility
+        ncells = a.shape[0]
+        n_clones_analyzed = len(a.obs['GBC'].unique())
+        X, feature_names = reduce_dimensions(a, method=dimred, n_comps=n_comps, sqrt=False, alpha=10)
+        y = pd.Categorical(a.obs['GBC'])
+        Y = one_hot_from_labels(y)
+    
+    ##
+
+    logger.info(f'Reading and formatting AFM, X and y complete, took total {t.stop()} s.')
+    logger.info(f'Total cells and clones in the original QCed sample (perturb seq QC metrics): {ncells0}; {n_all_clones}.')
+    logger.info(f'Total cells, clones and features submitted to classification: {ncells}; {n_clones_analyzed}, {X.shape[1]}.')
 
     # Here we go
     DF = []
@@ -225,4 +282,19 @@ if __name__ == "__main__":
         main()
 
 #######################################################################
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    
 
