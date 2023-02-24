@@ -123,14 +123,14 @@ args = my_parser.parse_args()
 
 path_main = args.path_main
 sample = args.sample
-filtering = args.filtering
+dimred = args.dimred
+filtering = args.filtering if dimred is None else 'pegasus'
 model = args.model
 ncombos = args.ncombos
 ncores = args.ncores 
 score = args.score
 min_cell_number = args.min_cell_number
 min_cov_treshold = args.min_cov_treshold
-dimred = args.dimred
 n_comps = args.n_comps
 
 ########################################################################
@@ -165,7 +165,7 @@ if not args.skip:
     #-----------------------------------------------------------------#
 
     # Set logger 
-    logger = set_logger(path_runs, f'logs_{sample}_{filtering}_{min_cell_number}_{min_cov_treshold}_{model}_{score}.txt')
+    logger = set_logger(path_runs, f'logs_{sample}_{filtering}_{dimred}_{min_cell_number}_{min_cov_treshold}_{model}_{score}.txt')
 
 ########################################################################
 
@@ -217,7 +217,7 @@ def main():
         _, a = filter_cells_and_vars(
             afm,
             sample=sample,
-            filtering='CV', 
+            filtering=filtering, 
             min_cell_number=min_cell_number, 
             min_cov_treshold=min_cov_treshold, 
             nproc=ncores
@@ -227,7 +227,7 @@ def main():
         a = nans_as_zeros(a) # For sklearn APIs compatibility
         ncells = a.shape[0]
         n_clones_analyzed = len(a.obs['GBC'].unique())
-        X, feature_names = reduce_dimensions(a, method=dimred, n_comps=n_comps, sqrt=False, alpha=10)
+        X, feature_names = reduce_dimensions(a, method=dimred, n_comps=n_comps, sqrt=False)
         y = pd.Categorical(a.obs['GBC'])
         Y = one_hot_from_labels(y)
     
@@ -252,22 +252,16 @@ def main():
             df = classification(X, y_, feature_names, key=model, GS=True, 
                 score=score, n_combos=ncombos, cores_model=ncores, cores_GS=1)
             df = df.assign(comparison=comparison, feature_type=filtering)          
-            df = df.loc[:,
-                [
-                    'feature_type', 'rank', 'evidence', 'evidence_type', 
-                    'effect_size', 'es_rescaled', 'effect_type', 'comparison'
-                ]
-            ]
             DF.append(df)
             logger.info(f'Comparison {comparison} finished: {t.stop()} s.')
         else:
             logger.info(f'Clone {y.categories[i]} does not reach {min_cell_number} cells. This should not happen here... {t.stop()} s.')
 
     df = pd.concat(DF, axis=0)
-    df['evidence'].describe()
+    logger.info(df['evidence'].describe())
 
     # Save results
-    df.to_excel(path_results + f'clones_{sample}_{filtering}_{min_cell_number}_{min_cov_treshold}_{model}_{score}.xlsx')
+    df.to_excel(path_results + f'clones_{sample}_{filtering}_{dimred}_{min_cell_number}_{min_cov_treshold}_{model}_{score}.xlsx')
 
     #-----------------------------------------------------------------#
 

@@ -16,13 +16,14 @@ from Cellula.preprocessing._pp import my_PCA
 ##
 
 
-def find_diffusion_matrix(X=None, alpha=5):
+def find_diffusion_matrix(X=None):
     """
     Function to find the diffusion matrix P.
     """
 
-    dists = pairwise_distances(X)
-    K = np.exp(-dists**2 / alpha)
+    dists = pairwise_distances(X, n_jobs=-1)
+    alpha = dists.flatten().std()
+    K = np.exp(-dists**2 / alpha**2) # alpha is the variance of the distance matrix, here
     
     r = np.sum(K, axis=0)
     Di = np.diag(1/r)
@@ -54,7 +55,7 @@ def find_diffusion_map(P_prime, D_left, n_eign=3):
 ##
 
 
-def reduce_dimensions(afm, method='PCA', metric='euclidean', n_comps=30, alpha=0.01, sqrt=False, scale=True):
+def reduce_dimensions(afm, method='PCA', metric='euclidean', n_comps=30, sqrt=False, scale=True):
     """
     Util to create dimension-reduced representation of the input SNVs AFM.
     """
@@ -67,7 +68,7 @@ def reduce_dimensions(afm, method='PCA', metric='euclidean', n_comps=30, alpha=0
     if scale:
         scaler = StandardScaler()
         X = scaler.fit_transform(X)
-    
+
     # Reduce
     if method == 'PCA':
         PCA = my_PCA()
@@ -81,9 +82,13 @@ def reduce_dimensions(afm, method='PCA', metric='euclidean', n_comps=30, alpha=0
         feature_names = [ f'UMAP{i}' for i in range(1, X_reduced.shape[1]+1)]
 
     elif method == 'diffmap':
-        P_prime, P, Di, K, D_left = find_diffusion_matrix(X, alpha=alpha)
+        P_prime, P, Di, K, D_left = find_diffusion_matrix(X)
         X_reduced = find_diffusion_map(P_prime, D_left, n_eign=n_comps)
         feature_names = [ f'Diff{i}' for i in range(1, X_reduced.shape[1]+1)]
 
     return X_reduced, feature_names
+
+
+
+
 
