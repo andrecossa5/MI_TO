@@ -39,6 +39,14 @@ my_parser.add_argument(
     help='Sample to use. Default: MDA.'
 )
 
+# Input_mode
+my_parser.add_argument(
+    '--input_mode', 
+    type=str,
+    default='',
+    help='Preprocessing version following the maegatk software. Default: ''.'
+)
+
 # Filter
 my_parser.add_argument(
     '--filtering', 
@@ -123,6 +131,7 @@ args = my_parser.parse_args()
 
 path_main = args.path_main
 sample = args.sample
+input_mode = args.input_mode
 dimred = args.dimred
 filtering = args.filtering if dimred is None else 'pegasus'
 model = args.model
@@ -147,14 +156,14 @@ if not args.skip:
 
     #-----------------------------------------------------------------#
 
-    path_data = path_main + '/data/'
-    path_results = path_main + '/results_and_plots/clones_classification/'
-    path_runs = path_main + '/runs/'
+    path_data = path_main + 'data/'
+    path_results = path_main + 'results_and_plots/supervised/clones_classification/'
+    path_runs = path_main + 'runs/'
 
     #-----------------------------------------------------------------#
 
     # Set logger 
-    logger = set_logger(path_runs, f'logs_{sample}_{filtering}_{dimred}_{min_cell_number}_{min_cov_treshold}_{model}_{score}.txt')
+    logger = set_logger(path_runs, f'logs_{sample}_{input_mode}_{filtering}_{dimred}_{min_cell_number}_{min_cov_treshold}_{model}_{score}.txt')
 
 ########################################################################
 
@@ -168,10 +177,10 @@ def main():
     t = Timer()
     t.start()
 
-    logger.info(f'Execute classification: --sample {sample} --filtering {filtering} --dimred {dimred} --model {model} --ncombos {ncombos} --score {score} --min_cell_number {min_cell_number} --min_cov_treshold {min_cov_treshold}')
+    logger.info(f'Execute classification: --sample {sample} --input_mode {input_mode} --filtering {filtering} --dimred {dimred} --model {model} --ncombos {ncombos} --score {score} --min_cell_number {min_cell_number} --min_cov_treshold {min_cov_treshold}')
 
     # Read data
-    afm = read_one_sample(path_main, sample=sample)
+    afm = read_one_sample(path_main, input_mode=input_mode, sample=sample)
     ncells0 = afm.shape[0]
     n_all_clones = len(afm.obs['GBC'].unique())
     blacklist = pd.read_csv(path_data + 'blacklist.csv', index_col=0)
@@ -228,8 +237,8 @@ def main():
 
     # Here we go
     L = []
-    for i in range(Y.shape[1]):
-
+    for i in range(Y.shape[1]):        
+        
         t.start()
         comparison = f'{y.categories[i]}_vs_rest' 
         logger.info(f'Starting comparison {comparison}, {i+1}/{Y.shape[1]}...')
@@ -237,7 +246,9 @@ def main():
         y_ = Y[:,i]
 
         # Check numbers 
+
         if np.sum(y_) > min_cell_number:
+
             d = classification(X, y_, key=model, GS=True, 
                 score=score, n_combos=ncombos, cores_model=ncores, cores_GS=1)
             d |= {
@@ -252,7 +263,8 @@ def main():
                 'model' : model,
                 'score_for_tuning' : score,
                 'comparison' : comparison
-            }          
+            }         
+
             L.append(d)
             logger.info(f'Comparison {comparison} finished: {t.stop()} s.')
         else:
@@ -262,7 +274,7 @@ def main():
     logger.info(df['f1'].describe())
 
     # Save results
-    df.to_excel(path_results + f'supervised_{sample}_{filtering}_{dimred}_{min_cell_number}_{min_cov_treshold}_{model}_{score}.xlsx')
+    df.to_excel(path_results + f'{sample}_{input_mode}_{filtering}_{dimred}_{min_cell_number}_{min_cov_treshold}_{model}_{score}.xlsx')
 
     #-----------------------------------------------------------------#
 

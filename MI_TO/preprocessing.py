@@ -122,11 +122,12 @@ def format_matrix(A, cbc_gbc_df=None, with_clones=True):
 ##
 
 
-def read_one_sample(path_main, sample=None):
+def read_one_sample(path_main, sample=None, input_mode=''):
     """
     Read and format one sample AFM.
     """
-    A = sc.read(path_main + f'data/AFMs/{sample}_afm.h5ad')
+    ii = '' if input_mode == '' else f'_{input_mode}'
+    A = sc.read(path_main + f'data/AFMs/{sample}_afm{ii}.h5ad')
     cbc_gbc_df = pd.read_csv(path_main + f'data/CBC_GBC_cells/CBC_GBC_{sample}.csv', index_col=0)
     afm = format_matrix(A, cbc_gbc_df)
     afm.obs = afm.obs.assign(sample=sample)
@@ -137,13 +138,14 @@ def read_one_sample(path_main, sample=None):
 ##
 
 
-def read_all_samples(path_main, sample_list=None):
+def read_all_samples(path_main, sample_list=None, input_mode=''):
     """
     Read and format all samples AFMs. 
     """
+    ii = '' if input_mode == '' else f'_{input_mode}'
     ORIG = {}
     for sample in sample_list:
-        orig = sc.read(path_main + f'data/AFMs/{sample}_afm.h5ad')
+        orig = sc.read(path_main + f'data/AFMs/{sample}_afm{ii}.h5ad')
         orig.obs = orig.obs.assign(sample=sample)
         ORIG[sample] = orig
         meta_vars = orig.var

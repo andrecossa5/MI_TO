@@ -28,13 +28,13 @@ def classification(X, y, key='logit', GS=True, n_combos=5, score='f1', cores_mod
     models = {
 
         'logit' : 
-        LogisticRegression(penalty='l2', n_jobs=cores_model, max_iter=10000),
+        LogisticRegression(solver='saga', penalty='elasticnet', n_jobs=cores_model, max_iter=10000),
 
         'xgboost' : 
         LGBMClassifier(n_jobs=cores_model, learning_rate=0.01),
 
         'SVM' : 
-        SVC(),
+        SVC(probability=True, kernel='linear'),
 
         'kNN' :
         KNeighborsClassifier(n_jobs=cores_model)
@@ -46,33 +46,33 @@ def classification(X, y, key='logit', GS=True, n_combos=5, score='f1', cores_mod
         'logit' : 
 
         {
-            'logit__solver' : ['newton-cg', 'lbfgs', 'liblinear'],
-            'logit__C' : [100, 10, 1.0, 0.1, 0.01]
+            'logit__C' : [100, 10, 1.0, 0.1, 0.01],
+            'logit__l1_ratio' : np.linspace(0, 1, 10)
         },
 
         'xgboost' : 
 
         {
+            "xgboost__num_leaves" : np.arange(20, 3000, 600),
             "xgboost__n_estimators" : np.arange(100, 600, 100),
-            "xgboost__max_depth" : [4, 5, 6, 7, 8, 10],
-            "xgboost__importance_type" : ["gain", "split"]
+            "xgboost__max_depth" : np.arange(3, 12, 2),
+            "xgboost__lambda_l1" : np.arange(0, 100, 25),
+            "xgboost__lambda_l2" : np.arange(0, 100, 25)
         },
 
         'SVM':
 
         {
-            "SVM__kernel" : ["linear", "rbf", "poly"],
-            "SVM__gamma" : [0.1, 1, 10, 100],
-            "SVM__C" : [0.1, 1, 10, 100, 1000],
-            "SVM__degree" : [0, 1, 2, 3, 4, 5, 6]
+            "SVM__gamma" : [0.01, 0.1, 1, 10, 100],
+            "SVM__C" : [0.1, 1, 10, 100, 1000]
         },
 
         'kNN' :
 
         {
-            "kNN__n_neighbors" : np.arange(5, 100, 25)
+            "kNN__n_neighbors" : np.arange(5, 100, 25),
+            "kNN__metric" : ['cosine', 'l2', 'euclidean']
         }
-
     }
     ###########
 
