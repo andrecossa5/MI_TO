@@ -140,23 +140,12 @@ if not args.skip:
 
     # Code
     from Cellula._utils import Timer, set_logger
-    from Cellula.ML._ML import *
-    from Cellula.dist_features._dist_features import *
+    from Cellula.dist_features._dist_features import one_hot_from_labels
     from MI_TO.preprocessing import *
     from MI_TO.dimred import *
+    from MI_TO.supervised import *
 
     #-----------------------------------------------------------------#
-
-    # Set other paths
-    # path_main = '/Users/IEO5505/Desktop/MI_TO/'
-    # sample = 'MDA'
-    # filtering = 'miller2022'
-    # model = 'xgboost'
-    # ncombos = 50
-    # ncores = 8
-    # score = 'f1'
-    # min_cell_number = 10
-    # min_cov_treshold = 50
 
     path_data = path_main + '/data/'
     path_results = path_main + '/results_and_plots/clones_classification/'
@@ -238,30 +227,42 @@ def main():
     logger.info(f'Total cells, clones and features submitted to classification: {ncells}; {n_clones_analyzed}, {X.shape[1]}.')
 
     # Here we go
-    DF = []
+    L = []
     for i in range(Y.shape[1]):
 
         t.start()
         comparison = f'{y.categories[i]}_vs_rest' 
         logger.info(f'Starting comparison {comparison}, {i+1}/{Y.shape[1]}...')
 
-        y_ = Y[:, i]
+        y_ = Y[:,i]
 
         # Check numbers 
         if np.sum(y_) > min_cell_number:
-            df = classification(X, y_, feature_names, key=model, GS=True, 
+            d = classification(X, y_, key=model, GS=True, 
                 score=score, n_combos=ncombos, cores_model=ncores, cores_GS=1)
-            df = df.assign(comparison=comparison, feature_type=filtering)          
-            DF.append(df)
+            d |= {
+                'sample' : sample,
+                'filtering' : filtering, 
+                'dimred' : dimred,
+                'min_cell_number' : min_cell_number,
+                'min_cov_treshold' : min_cov_treshold,
+                'ncells' : ncells,
+                'n_clones_analyzed' : n_clones_analyzed,
+                'n_features' : X.shape[1],
+                'model' : model,
+                'score_for_tuning' : score,
+                'comparison' : comparison
+            }          
+            L.append(d)
             logger.info(f'Comparison {comparison} finished: {t.stop()} s.')
         else:
             logger.info(f'Clone {y.categories[i]} does not reach {min_cell_number} cells. This should not happen here... {t.stop()} s.')
 
-    df = pd.concat(DF, axis=0)
-    logger.info(df['evidence'].describe())
+    df = pd.DataFrame(L)
+    logger.info(df['f1'].describe())
 
     # Save results
-    df.to_excel(path_results + f'clones_{sample}_{filtering}_{dimred}_{min_cell_number}_{min_cov_treshold}_{model}_{score}.xlsx')
+    df.to_excel(path_results + f'supervised_{sample}_{filtering}_{dimred}_{min_cell_number}_{min_cov_treshold}_{model}_{score}.xlsx')
 
     #-----------------------------------------------------------------#
 
