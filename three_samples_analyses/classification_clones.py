@@ -156,6 +156,9 @@ if not args.skip:
 
     #-----------------------------------------------------------------#
 
+    input_mode = ''
+    sample = 'MDA'
+
     path_data = path_main + 'data/'
     path_results = path_main + 'results_and_plots/supervised/clones_classification/'
     path_runs = path_main + 'runs/'
@@ -181,6 +184,9 @@ def main():
 
     # Read data
     afm = read_one_sample(path_main, input_mode=input_mode, sample=sample)
+
+    
+
     ncells0 = afm.shape[0]
     n_all_clones = len(afm.obs['GBC'].unique())
     blacklist = pd.read_csv(path_data + 'blacklist.csv', index_col=0)
@@ -274,7 +280,7 @@ def main():
     logger.info(df['f1'].describe())
 
     # Save results
-    df.to_excel(path_results + f'{sample}_{input_mode}_{filtering}_{dimred}_{min_cell_number}_{min_cov_treshold}_{model}_{score}.xlsx')
+    df.to_csv(path_results + f'{sample}_{input_mode}_{filtering}_{dimred}_{min_cell_number}_{min_cov_treshold}_{model}_{score}.csv')
 
     #-----------------------------------------------------------------#
 
