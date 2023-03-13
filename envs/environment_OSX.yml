@@ -25,6 +25,7 @@ dependencies:
   - python-annoy
   - ipykernel
   - pip:
+    - numcodecs
     - pandas==1.4.4
     - pegasusio==0.7.1
     - pegasuspy==1.7.1
