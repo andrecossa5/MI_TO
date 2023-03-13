@@ -31,3 +31,4 @@ dependencies:
     - fbpca
     - mquad
     - textalloc
+    - scikit-misc==0.1.4                    
