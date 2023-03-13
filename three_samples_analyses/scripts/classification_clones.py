@@ -148,16 +148,12 @@ n_comps = args.n_comps
 if not args.skip:
 
     # Code
-    from Cellula._utils import Timer, set_logger
-    from Cellula.dist_features._dist_features import one_hot_from_labels
+    from MI_TO.utils import *
     from MI_TO.preprocessing import *
     from MI_TO.dimred import *
     from MI_TO.supervised import *
 
     #-----------------------------------------------------------------#
-
-    input_mode = ''
-    sample = 'MDA'
 
     path_data = path_main + 'data/'
     path_results = path_main + 'results_and_plots/supervised/clones_classification/'
@@ -184,9 +180,6 @@ def main():
 
     # Read data
     afm = read_one_sample(path_main, input_mode=input_mode, sample=sample)
-
-    
-
     ncells0 = afm.shape[0]
     n_all_clones = len(afm.obs['GBC'].unique())
     blacklist = pd.read_csv(path_data + 'blacklist.csv', index_col=0)

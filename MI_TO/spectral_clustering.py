@@ -4,11 +4,8 @@ the MT variants space.
 """
 
 import numpy as np
-import pandas as pd
 import scanpy as sc
-import anndata
 import leidenalg
-import igraph as ig
 
 
 ##

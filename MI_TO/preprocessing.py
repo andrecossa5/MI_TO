@@ -667,6 +667,3 @@ def filter_cells_and_vars(
 
     return a_cells, a
 
-
-
-

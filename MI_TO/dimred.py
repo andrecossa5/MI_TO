@@ -2,15 +2,14 @@
 Dimensionality reduction utils to compress (pre-filtered) AFMs.
 """
 
-from joblib import cpu_count
 import numpy as np
-import pandas as pd
+import fbpca
 from umap.umap_ import UMAP
 from sklearn.metrics import pairwise_distances
 from scipy.linalg import eigh
+from scipy.sparse import issparse
 from sklearn.preprocessing import StandardScaler
-
-from Cellula.preprocessing._pp import my_PCA
+from umap.umap_ import simplicial_set_embedding, find_ab_params
 
 
 ##
@@ -55,6 +54,26 @@ def find_diffusion_map(P_prime, D_left, n_eign=3):
 ##
 
 
+def find_pca(X, n_pcs=30):
+    """
+    Get PCA embeddings with fbpca.
+    """
+
+    if issparse(X): 
+        X = X.A
+        X[np.isnan(X)] = 0 # np.nans removal
+    else:
+        X[np.isnan(X)] = 0
+
+    np.random.seed(1234)
+    X_pca, _, _ = fbpca.pca(X, k=n_pcs, raw=True)
+    
+    return X_pca
+
+
+##
+
+
 def reduce_dimensions(afm, method='PCA', metric='euclidean', n_comps=30, sqrt=False, scale=True):
     """
     Util to create dimension-reduced representation of the input SNVs AFM.
@@ -71,9 +90,7 @@ def reduce_dimensions(afm, method='PCA', metric='euclidean', n_comps=30, sqrt=Fa
 
     # Reduce
     if method == 'PCA':
-        PCA = my_PCA()
-        PCA.calculate_PCA(X, n_components=n_comps)
-        X_reduced = PCA.embs
+        X_reduced = find_pca(X, n_pcs=n_comps)
         feature_names = [ f'PC{i}' for i in range(1, X_reduced.shape[1]+1)]
 
     elif method == 'UMAP':
@@ -88,6 +105,26 @@ def reduce_dimensions(afm, method='PCA', metric='euclidean', n_comps=30, sqrt=Fa
 
     return X_reduced, feature_names
 
+
+##
+
+
+def umap_from_X_conn(X, conn, ncomps=2, metric='euclidean'):
+    """
+    Wrapper around umap.umap_.simplicial_set_embedding() to create a umap embedding of the 
+    feature matrix X using a precomputed fuzzy graph.
+    """
+    a, b = find_ab_params(1.0, 0.5)
+    X_umap, _ = simplicial_set_embedding(
+        X, conn, ncomps, 1.0, a, b, 1.0, 5, 200, 'spectral', 
+        random_state=np.random.RandomState(0), metric=metric, metric_kwds={},
+        densmap=None, densmap_kwds=None, output_dens=None
+    )
+
+    return X_umap
+
+
+##
 
 
 

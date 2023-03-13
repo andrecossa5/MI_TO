@@ -3,11 +3,7 @@ Module for kNN utils. Import kNN from Cellula by default, but implements utiliti
 kNN masked affinity matrices from full affinity matrices. 
 """
 
-import gc
-from joblib import cpu_count
 import numpy as np
-import pandas as pd
-import scanpy as sc
 from umap.umap_ import fuzzy_simplicial_set 
 from scipy.sparse import coo_matrix 
 from scanpy.neighbors import _get_sparse_matrix_from_indices_distances_umap 
@@ -16,7 +12,7 @@ from scanpy.neighbors import _get_sparse_matrix_from_indices_distances_umap
 ##
 
 
-def kNN_graph(X, k=15, n_components=None):
+def kNN_graph(X, k=15):
     """
     Compute a kNN graph from some pre-computed distance matrix.
     """

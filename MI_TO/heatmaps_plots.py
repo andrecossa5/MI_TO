@@ -3,14 +3,8 @@ Utils and plotting functions to visualize (clustered and annotated) cells x vars
 or cells x cells distances/affinity matrices.
 """
 
-import os
-import scanpy as sc
-import anndata
-from scipy.stats import zscore
-from Cellula._utils import Timer
-from Cellula.plotting._plotting import *
-from Cellula.plotting._plotting_base import *
-from Cellula.plotting._colors import *
+from .plotting_base import *
+from .colors import *
 
 
 ##
@@ -75,11 +69,6 @@ def cell_cell_dists_heatmap(D, cell_anno=None, anno_colors=None, heat_label=None
 
 
 ##
-
-
-
-
-
 
 
 

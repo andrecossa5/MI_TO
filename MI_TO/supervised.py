@@ -3,8 +3,6 @@ Supervised.py: functions for classification models training and evaluation.
 """
 
 import numpy as np
-import pandas as pd
-from joblib import cpu_count
 from scipy.sparse import issparse
 from sklearn.preprocessing import StandardScaler
 from sklearn.linear_model import LogisticRegression

@@ -3,14 +3,9 @@ Module to create custom distance function among cell AF profiles.
 """
 
 import numpy as np
-import pandas as pd
-import scanpy as sc
-from numba import njit, prange
 from scipy.spatial.distance import sqeuclidean, cosine, correlation
 from scipy.spatial.distance import euclidean as euclidean_std
 from sklearn.metrics import pairwise_distances
-
-from Cellula._utils import Timer
 
 
 ##

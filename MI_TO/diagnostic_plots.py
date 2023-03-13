@@ -2,14 +2,10 @@
 Utils and plotting functions to visualize and inspect SNVs from a MAESTER experiment and maegatk output.
 """
 
-import os
 import gc
-import scanpy as sc
-import anndata
 from itertools import product
-from Cellula._utils import Timer
-from Cellula.plotting._plotting import *
-from Cellula.plotting._plotting_base import *
+
+from MI_TO.plotting_base import *
 from MI_TO.preprocessing import *
 from MI_TO.utils import *
 
