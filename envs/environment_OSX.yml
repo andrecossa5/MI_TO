@@ -3,6 +3,7 @@ channels:
   - bioconda
   - defaults
 dependencies:
+  - fortran-compiler
   - cxx-compiler
   - conda-build
   - leidenalg=0.8.10
