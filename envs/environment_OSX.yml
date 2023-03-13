@@ -31,4 +31,4 @@ dependencies:
     - fbpca
     - mquad
     - textalloc
-    - scikit-misc==0.1.4                    
+    - git+https://github.com/has2k1/scikit-misc.git             
