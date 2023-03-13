@@ -4,6 +4,7 @@ channels:
   - defaults
 dependencies:
   - cxx-compiler
+  - fortran-compiler
   - conda-build
   - leidenalg=0.8.10
   - matplotlib=3.5.3
