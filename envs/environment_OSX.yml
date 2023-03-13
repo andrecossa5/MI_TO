@@ -7,28 +7,28 @@ dependencies:
   - fortran-compiler
   - cython
   - conda-build
-  - leidenalg=0.8.10
-  - matplotlib=3.5.3
-  - networkx=2.8.6
-  - numba=0.55.2
-  - numpy=1.22.4
-  - python=3.10.6
-  - scanpy=1.9.1
-  - scikit-learn=1.1.2
-  - scipy=1.9.0
-  - seaborn=0.12.0
-  - statsmodels=0.13.2
-  - umap-learn=0.5.3
+  - leidenalg
+  - matplotlib
+  - networkx
+  - numba
+  - numpy
+  - python=3.9
+  - scanpy
+  - scikit-learn
+  - scipy
+  - seaborn
+  - statsmodels
+  - umap-learn
   - cmake
   - lightgbm
   - pip
   - python-annoy
   - ipykernel
   - pip:
-    - pandas==1.4.4
+    - pandas
     - pegasusio
     - pegasuspy
     - python-igraph
-    - statannotations==0.4.4
+    - statannotations
     - mquad
     - textalloc
