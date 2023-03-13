@@ -26,8 +26,8 @@ dependencies:
   - ipykernel
   - pip:
     - pandas
-    - pegasusio
-    - pegasuspy
+    - pegasusio==0.7.1 
+    - pegasuspy==1.7.1
     - python-igraph
     - statannotations
     - mquad
