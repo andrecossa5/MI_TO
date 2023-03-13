@@ -4,6 +4,7 @@ channels:
   - defaults
 dependencies:
   - fortran-compiler
+  - libopenblas-dev
   - cxx-compiler
   - conda-build
   - leidenalg=0.8.10
