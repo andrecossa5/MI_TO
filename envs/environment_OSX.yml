@@ -22,7 +22,6 @@ dependencies:
   - pip
   - python-annoy
   - ipykernel
-  - scikit-misc
   - pip:
     - pandas==1.4.4
     - pegasusio==0.7.1
