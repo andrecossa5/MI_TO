@@ -32,3 +32,4 @@ dependencies:
     - statannotations
     - mquad
     - textalloc
+    - zarr==2.14.2 
