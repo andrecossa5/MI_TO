@@ -1,4 +1,0 @@
-Traceback (most recent call last):
-  File "/Users/IEO5505/Desktop/MI_TO/three_samples_analyses/nextflow/work/a5/9b7c942f28861342d2a13c60e001f6/.command.sh", line 2, in <module>
-    import scanpy as sc
-ImportError: No module named scanpy

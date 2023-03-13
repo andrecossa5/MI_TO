@@ -3,6 +3,7 @@ channels:
   - bioconda
   - defaults
 dependencies:
+  - cxx-compiler
   - conda-build
   - leidenalg=0.8.10
   - matplotlib=3.5.3
@@ -21,6 +22,7 @@ dependencies:
   - pip
   - python-annoy
   - ipykernel
+  - scikit-misc
   - pip:
     - pandas==1.4.4
     - pegasusio==0.7.1
