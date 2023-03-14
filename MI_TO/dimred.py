@@ -3,12 +3,12 @@ Dimensionality reduction utils to compress (pre-filtered) AFMs.
 """
 
 import numpy as np
-import fbpca
 from umap.umap_ import UMAP
 from sklearn.metrics import pairwise_distances
 from scipy.linalg import eigh
 from scipy.sparse import issparse
 from sklearn.preprocessing import StandardScaler
+from sklearn.decomposition import PCA
 from umap.umap_ import simplicial_set_embedding, find_ab_params
 
 
@@ -65,8 +65,8 @@ def find_pca(X, n_pcs=30):
     else:
         X[np.isnan(X)] = 0
 
-    np.random.seed(1234)
-    X_pca, _, _ = fbpca.pca(X, k=n_pcs, raw=True)
+    model = PCA(n_components=n_pcs, random_state=1234)
+    X_pca = model.fit_transform(X)
     
     return X_pca
 

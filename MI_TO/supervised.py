@@ -53,9 +53,9 @@ def classification(X, y, key='logit', GS=True, n_combos=5, score='f1', cores_mod
         {
             "xgboost__num_leaves" : np.arange(20, 3000, 600),
             "xgboost__n_estimators" : np.arange(100, 600, 100),
-            "xgboost__max_depth" : np.arange(3, 12, 2),
-            "xgboost__lambda_l1" : np.arange(0, 100, 25),
-            "xgboost__lambda_l2" : np.arange(0, 100, 25)
+            "xgboost__max_depth" : np.arange(3, 12, 2)
+            # "xgboost__lambda_l1" : np.arange(0, 100, 25),
+            # "xgboost__lambda_l2" : np.arange(0, 100, 25)
         },
 
         'SVM':

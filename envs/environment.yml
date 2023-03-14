@@ -33,3 +33,4 @@ dependencies:
     - mquad
     - textalloc
     - zarr==2.14.2 
+    - fbpca

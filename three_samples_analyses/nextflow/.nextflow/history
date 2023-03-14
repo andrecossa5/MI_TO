@@ -1,4 +1,4 @@
-2023-03-09 18:16:49	1.1s	pedantic_kilby	ERR	b06065098d6a3858b72b44ff9113193b	caed7cfc-967a-4b2f-a3a4-3f4681cef86a	nextflow run prova.nf
-2023-03-09 18:17:11	1.4s	high_gilbert	ERR	b06065098d6a3858b72b44ff9113193b	67d68f97-a080-4075-8acb-77e98f2ff635	nextflow run prova.nf -profile conda
-2023-03-09 18:20:14	8.8s	nostalgic_mandelbrot	ERR	b06065098d6a3858b72b44ff9113193b	76d1e99c-61f8-4d3d-aa16-8fe49dbbbdd6	nextflow run prova.nf
-2023-03-09 18:22:48	3.8s	elegant_mercator	ERR	d8a9088479eb68bdfa5f84ee33ac9aa8	9c5b73d1-f4c8-4f35-bd2f-6f0099abc455	nextflow run prova.nf
+2023-03-14 11:35:56	2m 23s	sharp_shannon	ERR	31902ad8b7ced28917d4418a19807a63	349b3e75-811b-4a73-b6c9-5cfd01fd3ab8	nextflow main.nf
+2023-03-14 11:38:36	52.4s	peaceful_hugle	ERR	5cd0106664cf415babe60558ddfaed78	4e9667bd-4b51-4106-a3e7-8f8829519226	nextflow main.nf
+2023-03-14 11:49:55	53s	deadly_pesquet	ERR	c2378b7a85af80563a8d1d2a61943437	ee2e9c61-6976-4975-aff6-38423dddc4f2	nextflow main.nf
+2023-03-14 11:54:24	52.3s	gloomy_varahamihira	ERR	c2378b7a85af80563a8d1d2a61943437	eb9c3a11-22d6-4686-81b1-8ba10f84f313	nextflow main.nf
