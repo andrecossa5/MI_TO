@@ -1,16 +1,12 @@
 #!/usr/bin/env nextflow
 
-
 //
-
 
 // Paths
 params.p = '/Users/IEO5505/Desktop/MI_TO/'
 params.path_code = '/Users/IEO5505/Desktop/MI_TO/three_samples_analyses/scripts/'
 
-
 //
-
 
 // Create jobs options
 process createOptions {
@@ -24,7 +20,6 @@ process createOptions {
     """
 
 }
-
 
 // Run!
 process runJobs {
@@ -55,7 +50,6 @@ process runJobs {
     """
 
 }
-
 
 // Workflow
 workflow { 
