@@ -5,9 +5,9 @@ from itertools import product
 
 # Lists
 samples = ['MDA']# , 'AML']#, 'PDX']
-input_mode = ['']#, 'more_stringent']
+input_mode = ['less_stringent']#, 'more_stringent']
 filtering = ['miller2022']#, 'MQuad', 'velten2021', 'CV', 'pegasus', 'seurat', 'density']
-dimred = ['']#, 'more_stringent']
+dimred = ['no_dimred']#, 'more_stringent']
 models = ['kNN']#, 'logit'] # 'SVM, 'xgboost']
 min_cell_number = [0]#, 10, 50]
 

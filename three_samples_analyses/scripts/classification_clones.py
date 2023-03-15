@@ -43,8 +43,8 @@ my_parser.add_argument(
 my_parser.add_argument(
     '--input_mode', 
     type=str,
-    default='',
-    help='Preprocessing version following the maegatk software. Default: ''.'
+    default='less_stringent',
+    help='Preprocessing version following the maegatk software. Default: less_stringent.'
 )
 
 # Filter
@@ -59,8 +59,8 @@ my_parser.add_argument(
 my_parser.add_argument(
     '--dimred', 
     type=str,
-    default=None,
-    help='Method to reduce the dimension of the SNVs space (top 1000 SNVs selected) by pegasus. Default: None.'
+    default='no_dimred',
+    help='Method to reduce the dimension of the SNVs space (top 1000 SNVs selected) by pegasus. Default: no_dimred.'
 )
 
 # Dimred
@@ -133,7 +133,7 @@ path_main = args.path_main
 sample = args.sample
 input_mode = args.input_mode
 dimred = args.dimred
-filtering = args.filtering if dimred is None else 'pegasus'
+filtering = args.filtering if dimred == 'no_dimred' else 'pegasus'
 model = args.model
 ncombos = args.ncombos
 ncores = args.ncores 
@@ -176,7 +176,20 @@ def main():
     t = Timer()
     t.start()
 
-    logger.info(f'Execute classification: --sample {sample} --input_mode {input_mode} --filtering {filtering} --dimred {dimred} --model {model} --ncombos {ncombos} --score {score} --min_cell_number {min_cell_number} --min_cov_treshold {min_cov_treshold}')
+    logger.info(
+        f""" 
+        Execute classification: \n
+        --sample {sample} 
+        --input_mode {input_mode} 
+        --filtering {filtering} 
+        --dimred {dimred} 
+        --model {model}
+        --ncombos {ncombos} 
+        --score {score} 
+        --min_cell_number {min_cell_number} 
+        --min_cov_treshold {min_cov_treshold}
+        """
+    )
 
     # Read data
     afm = read_one_sample(path_main, input_mode=input_mode, sample=sample)
@@ -187,7 +200,7 @@ def main():
     ##
 
     # Filter 'good quality' cells and variants
-    if dimred is None:
+    if dimred == 'no_dimred':
 
         _, a = filter_cells_and_vars(
             afm,
@@ -230,7 +243,7 @@ def main():
     
     ##
 
-    logger.info(f'Reading and formatting AFM, X and y complete, took total {t.stop()} s.')
+    logger.info(f'Reading and formatting AFM, X and y, took total {t.stop()}')
     logger.info(f'Total cells and clones in the original QCed sample (perturb seq QC metrics): {ncells0}; {n_all_clones}.')
     logger.info(f'Total cells, clones and features submitted to classification: {ncells}; {n_clones_analyzed}, {X.shape[1]}.')
 
@@ -265,9 +278,9 @@ def main():
             }         
 
             L.append(d)
-            logger.info(f'Comparison {comparison} finished: {t.stop()} s.')
+            logger.info(f'Comparison {comparison} finished: {t.stop()}')
         else:
-            logger.info(f'Clone {y.categories[i]} does not reach {min_cell_number} cells. This should not happen here... {t.stop()} s.')
+            logger.info(f'Clone {y.categories[i]} does not reach {min_cell_number} cells. This should not happen here... {t.stop()}')
 
     df = pd.DataFrame(L)
     logger.info(df['f1'].describe())

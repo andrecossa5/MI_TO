@@ -81,7 +81,7 @@ def set_logger(path_runs, name, mode='w'):
     """
     A function to open a logs.txt file for a certain script, writing its trace at path_main/runs/step/.
     """
-    logger = logging.getLogger("Cellula_logs")
+    logger = logging.getLogger("mito_benchmark")
     handler = logging.FileHandler(path_runs + name, mode=mode)
     handler.setFormatter(logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s"))
     logger.setLevel(logging.INFO)

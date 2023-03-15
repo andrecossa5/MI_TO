@@ -122,12 +122,11 @@ def format_matrix(A, cbc_gbc_df=None, with_clones=True):
 ##
 
 
-def read_one_sample(path_main, sample=None, input_mode=''):
+def read_one_sample(path_main, sample=None, input_mode='less_stringent'):
     """
     Read and format one sample AFM.
     """
-    ii = '' if input_mode == '' else f'_{input_mode}'
-    A = sc.read(path_main + f'data/AFMs/{sample}_afm{ii}.h5ad')
+    A = sc.read(path_main + f'data/AFMs/{sample}_afm_{input_mode}.h5ad')
     cbc_gbc_df = pd.read_csv(path_main + f'data/CBC_GBC_cells/CBC_GBC_{sample}.csv', index_col=0)
     afm = format_matrix(A, cbc_gbc_df)
     afm.obs = afm.obs.assign(sample=sample)
