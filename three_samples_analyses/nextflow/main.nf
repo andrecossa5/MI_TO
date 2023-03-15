@@ -23,11 +23,6 @@ process createOptions {
 
 // Run!
 process runJobs {
-  
-    // Directives
-    cpus 8
-    memory '5 G'
-    maxForks 4
 
     input:
     val x
@@ -38,13 +33,16 @@ process runJobs {
     script:
     """
     python $params.path_code/classification_clones.py \
-        --p $params.p \
         --min_cov_treshold 50 \
         --ncombos 5 \
+        --ncores ${task.cpus} \
+        --p $params.p \
         --sample ${x[1]} \
-        --model ${x[2]} \
+        --input_mode ${x[2]} \
         --filtering ${x[3]} \
-        --min_cell_number ${x[4]} > out.csv
+        --dimred ${x[4]} \
+        --model ${x[5]} \
+        --min_cell_number ${x[6]} > out.csv
     """
 
 }

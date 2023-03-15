@@ -3,15 +3,20 @@
 import pandas as pd
 from itertools import product
 
-
+# Lists
 samples = ['MDA']# , 'AML']#, 'PDX']
-models = ['kNN']#, 'logit'] # 'SVM, 'xgboost']
+input_mode = ['']#, 'more_stringent']
 filtering = ['miller2022']#, 'MQuad', 'velten2021', 'CV', 'pegasus', 'seurat', 'density']
+dimred = ['']#, 'more_stringent']
+models = ['kNN']#, 'logit'] # 'SVM, 'xgboost']
 min_cell_number = [0]#, 10, 50]
 
-jobs = list(product(samples, models, filtering, min_cell_number)) 
-pd.DataFrame(jobs, columns=['sample', 'model', 'filtering', 'min_cell_number']).to_csv('jobs.csv')
-
+# Product, and write
+jobs = list(product(samples, input_mode, filtering, dimred, models, min_cell_number)) 
+pd.DataFrame(
+    jobs, 
+    columns=['sample', 'input_mode', 'filtering', 'dimred', 'model', 'min_cell_number']
+).to_csv('jobs.csv')
 
 
 
