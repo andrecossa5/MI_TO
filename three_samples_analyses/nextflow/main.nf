@@ -1,6 +1,6 @@
 #!/usr/bin/env nextflow
 
-//
+nextflow.enable.dsl = 2
 
 // Paths
 params.p = '/Users/IEO5505/Desktop/MI_TO/'
@@ -53,7 +53,7 @@ process runJobs {
 workflow { 
 
     jobs = createOptions().splitCsv(skip:1)
-    runJobs(jobs)
+    runJobs(jobs) 
     view
 
 }
