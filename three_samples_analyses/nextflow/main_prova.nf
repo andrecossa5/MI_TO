@@ -25,9 +25,11 @@ process createOptions {
 process runJobs {
   
     // Directives
-    cpus 8
-    memory '5 G'
-    maxForks 4
+    cpus 4
+    memory '4 G' 
+    // errorStrategy 'retry'
+    // maxRetries 1
+    maxForks 8
 
     input:
     val x
