@@ -131,7 +131,11 @@ def read_one_sample(path_main, sample=None, input_mode='less_stringent'):
     barcodes = pd.read_csv(path_main + f'data/barcodes/{sample}_barcodes.csv', index_col=0)
     
     # Filter cells passing transcriptional QC (barcodes) and confidently assigned to a single GBC clone
-    valid_cbcs = set(cbc_gbc_df.index.to_list()) & set(A.obs_names.to_list()) & set(barcodes.iloc[:,0].to_list())
+    valid_cbcs = list(
+        set(cbc_gbc_df.index.to_list()) \
+        & set(A.obs_names.to_list()) \
+        & set(barcodes.iloc[:,0].to_list())
+    )
     A = A[valid_cbcs, :].copy()
     cbc_gbc_df = cbc_gbc_df.loc[valid_cbcs, :]
     

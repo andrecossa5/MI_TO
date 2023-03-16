@@ -29,7 +29,7 @@ RUN wget https://github.com/conda-forge/miniforge/releases/latest/download/Mamba
 ENV PATH="/mambaforge/bin/:$PATH"
 
 ## Clone repo and install code
-RUN git clone https://github.com/andrecossa5/MI_TO.git \\
+RUN git clone https://github.com/andrecossa5/MI_TO.git \
     && cd MI_TO \
     && mamba env update -n base -f envs/environment.yml \
     && mamba develop .. \
