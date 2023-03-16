@@ -136,6 +136,7 @@ def read_one_sample(path_main, sample=None, input_mode='less_stringent'):
         & set(A.obs_names.to_list()) \
         & set(barcodes.iloc[:,0].to_list())
     )
+ 
     A = A[valid_cbcs, :].copy()
     cbc_gbc_df = cbc_gbc_df.loc[valid_cbcs, :]
     
@@ -149,14 +150,13 @@ def read_one_sample(path_main, sample=None, input_mode='less_stringent'):
 ##
 
 
-def read_all_samples(path_main, sample_list=None, input_mode=''):
+def read_all_samples(path_main, sample_list=None, input_mode='less_stringent'):
     """
     Read and format all samples AFMs. 
     """
-    ii = '' if input_mode == '' else f'_{input_mode}'
     ORIG = {}
     for sample in sample_list:
-        orig = sc.read(path_main + f'data/AFMs/{sample}_afm{ii}.h5ad')
+        orig = sc.read(path_main + f'data/AFMs/{sample}_afm_{input_mode}.h5ad')
         orig.obs = orig.obs.assign(sample=sample)
         ORIG[sample] = orig
         meta_vars = orig.var
