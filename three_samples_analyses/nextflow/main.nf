@@ -2,6 +2,10 @@
 
 nextflow.enable.dsl = 2
 
+// Paths
+params.p = '/Users/IEO5505/Desktop/MI_TO/'
+params.path_code = '/Users/IEO5505/Desktop/MI_TO/three_samples_analyses/scripts/'
+
 //
 
 // Create jobs options
