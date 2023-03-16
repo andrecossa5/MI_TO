@@ -34,7 +34,7 @@ process runJobs {
     """
     python $params.path_code/classification_clones.py \
         --min_cov_treshold 50 \
-        --ncombos 5 \
+        --ncombos 100 \
         --ncores ${task.cpus} \
         --p $params.p \
         --sample ${x[1]} \
