@@ -1,0 +1,4 @@
+2023-03-20 12:09:46	1.3s	special_picasso	OK	f7e45d0252b7f4db97ca5fd2162c51cd	00237641-ae91-4d66-b49f-a3348947fd8a	nextflow run main.nf
+2023-03-20 12:10:39	5m 3s	soggy_sax	OK	f7e45d0252b7f4db97ca5fd2162c51cd	377c999b-5d41-4706-be36-a99522abc348	nextflow run main.nf -c nextflow_local.config
+2023-03-20 12:16:23	-	marvelous_laplace	-	f7e45d0252b7f4db97ca5fd2162c51cd	c4c32cc2-458d-4a06-a156-d45bbffd1f54	nextflow run main.nf -c nextflow_local.config
+2023-03-20 12:16:37	3.7s	dreamy_moriondo	OK	f7e45d0252b7f4db97ca5fd2162c51cd	fd4e5670-e188-4b90-9202-ae0642359710	nextflow run main.nf -c nextflow_local.config
