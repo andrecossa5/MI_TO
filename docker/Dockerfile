@@ -34,6 +34,7 @@ RUN git clone https://github.com/andrecossa5/MI_TO.git \
     && mamba env update -n base -f envs/environment.yml \
     && mamba develop .. \
     && mamba develop ../MI_TO/ 
+RUN pip install dnaio
  
 ## Default command to initialize the container
 CMD [ "bash" ]
