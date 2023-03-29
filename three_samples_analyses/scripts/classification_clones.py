@@ -43,8 +43,8 @@ my_parser.add_argument(
 my_parser.add_argument(
     '--input_mode', 
     type=str,
-    default='less_stringent',
-    help='Preprocessing version following the maegatk software. Default: less_stringent.'
+    default='more_stringent',
+    help='Preprocessing version following the maegatk software. Default: more_stringent.'
 )
 
 # Filter
@@ -99,15 +99,15 @@ my_parser.add_argument(
 my_parser.add_argument(
     '--min_cell_number', 
     type=int,
-    default=0,
-    help='Include in the analysis only cells with membership in clones with >= min_cell_number. Default: 0.'
+    default=10,
+    help='Include in the analysis only cells with membership in clones with >= min_cell_number. Default: 10.'
 )
 
 # min_cov_treshold
 my_parser.add_argument(
     '--min_cov_treshold', 
     type=int,
-    default=30,
+    default=50,
     help='Include in the analysis only cells MAESTER sites mean coverage > min_cov_treshold. Default: 30.'
 )
 
