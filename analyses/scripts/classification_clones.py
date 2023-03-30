@@ -155,6 +155,7 @@ if not args.skip:
 
     #-----------------------------------------------------------------#
 
+    # path_main = '/Users/IEO5505/Desktop/MI_TO/'
     path_data = path_main + 'data/'
     path_results = path_main + 'results_and_plots/supervised/clones_classification/'
     path_runs = path_main + 'runs/'
@@ -190,8 +191,7 @@ def main():
         --min_cov_treshold {min_cov_treshold}
         """
     )
-
-    # Read data
+    
     afm = read_one_sample(path_main, input_mode=input_mode, sample=sample)
     ncells0 = afm.shape[0]
     n_all_clones = len(afm.obs['GBC'].unique())
@@ -249,7 +249,7 @@ def main():
 
     # Here we go
     L = []
-    for i in range(Y.shape[1]):        
+    for i in range(Y.shape[1]):  
         
         t.start()
         comparison = f'{y.categories[i]}_vs_rest' 
@@ -262,7 +262,7 @@ def main():
         if np.sum(y_) > min_cell_number:
 
             d = classification(X, y_, key=model, GS=True, 
-                score=score, n_combos=ncombos, cores_model=ncores, cores_GS=1)
+                score=score, n_combos=ncombos, cores_model=ncores, cores_GS=1, GS_mode='random')
             d |= {
                 'sample' : sample,
                 'filtering' : filtering, 
@@ -276,9 +276,9 @@ def main():
                 'score_for_tuning' : score,
                 'comparison' : comparison
             }         
-
             L.append(d)
             logger.info(f'Comparison {comparison} finished: {t.stop()}')
+
         else:
             logger.info(f'Clone {y.categories[i]} does not reach {min_cell_number} cells. This should not happen here... {t.stop()}')
 

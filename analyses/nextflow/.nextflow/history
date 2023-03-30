@@ -1,0 +1,1 @@
+2023-03-16 10:00:36	8m 24s	astonishing_coulomb	OK	6d079a869f7a4a1f835340c6fefeca42	1f98b5bd-dc53-4eb4-a851-c5a679bba7f6	nextflow run main.nf -c nextflow_local.config

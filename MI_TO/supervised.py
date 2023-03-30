@@ -13,43 +13,43 @@ from sklearn.pipeline import Pipeline
 from sklearn.model_selection import StratifiedShuffleSplit, RandomizedSearchCV
 from sklearn.metrics import *
 
+from hyperopt import tpe, hp
+from hpsklearn import HyperoptEstimator, k_neighbors_classifier, standard_scaler, logistic_regression, lightgbm_classification
+
 
 ##
 
 
-def classification(X, y, key='logit', GS=True, n_combos=5, score='f1', cores_model=8, cores_GS=1):
+def classification(X, y, key='logit', GS=True, n_combos=50, score='f1', cores_model=8, cores_GS=1, GS_mode='bayes'):
     """
     Given some input data X y, run a classification analysis in several flavours.
     """
 
-    ########### Params
+    ########### Standard sklearn models
     models = {
 
         'logit' : 
         LogisticRegression(solver='saga', penalty='elasticnet', n_jobs=cores_model, max_iter=1000),
-
+        
         'xgboost' : 
         LGBMClassifier(n_jobs=cores_model, learning_rate=0.1),
-
-        'SVM' : 
-        SVC(probability=True, kernel='linear'),
-
+        
         'kNN' :
         KNeighborsClassifier(n_jobs=cores_model)
 
     }
-
+    ###########
+    ##
+    ########### Sklarn GS spaces
     params = {
 
         'logit' : 
-
         {
             'logit__C' : [100, 10, 1.0, 0.1, 0.01],
             'logit__l1_ratio' : np.linspace(0, 1, 10)
         },
-
+        
         'xgboost' : 
-
         {
             "xgboost__num_leaves" : np.arange(20, 3000, 600),
             "xgboost__n_estimators" : np.arange(100, 600, 100),
@@ -57,26 +57,55 @@ def classification(X, y, key='logit', GS=True, n_combos=5, score='f1', cores_mod
         },
 
         'SVM':
-
         {
             "SVM__gamma" : [0.01, 0.1, 1, 10, 100],
             "SVM__C" : [0.1, 1, 10, 100, 1000]
         },
 
         'kNN' :
-
         {
             "kNN__n_neighbors" : np.arange(5, 100, 25),
             "kNN__metric" : ['cosine', 'l2', 'euclidean']
         }
+
     }
     ###########
 
     ##
 
+    ########### Hyperoptim models
+    hyper_models = {
+
+        'logit' : logistic_regression('logistic_regression'),
+                #     'logistic_regression', solver='saga', penalty='elasticnet', 
+                #     n_jobs=cores_model, max_iter=1000, 
+                #     C=hp.choice('C', [100, 10, 1.0, 0.1, 0.01]),
+                #     l1_ratio=hp.choice('l1_ratio', np.linspace(0, 1, 10))
+                # ),
+
+        'xgboost' : lightgbm_classification('xgboost'),
+                #     'lightgbm_classification', learning_rate=0.1,
+                #     num_leaves=hp.choice('num_leaves', np.arange(20, 3000, 600)),
+                #     n_estimators=hp.choice('n_estimators', np.arange(100, 600, 100)),
+                #     max_depth=hp.choice('max_depth', np.arange(3, 12, 2))
+                # ),
+
+        'kNN' : k_neighbors_classifier('k_neighbors_classifier')
+                #     'k_neighbors_classifier', 
+                #     n_jobs=cores_model,
+                #     n_neighbors=hp.choice('n_neighbors', np.arange(5, 100, 25)),
+                #     metric=hp.choice('metric', ['cosine', 'l2', 'euclidean'])
+                # )
+    
+    }
+    ###########
+
+
+    ##
+
     # Train-test split 
-    rng = np.random.RandomState(1234)
-    sss = StratifiedShuffleSplit(n_splits=2, test_size=0.2, random_state=rng)
+    seed = 1234
+    sss = StratifiedShuffleSplit(n_splits=2, test_size=0.2, random_state=seed)
 
     if issparse(X):
         X = X.A # Densify if genes as features
@@ -85,17 +114,18 @@ def classification(X, y, key='logit', GS=True, n_combos=5, score='f1', cores_mod
         X_train, X_test = X[train_index], X[test_index]
         y_train, y_test = y[train_index], y[test_index]
 
-    # Pipe
-    pipe = Pipeline( 
-        steps=[ 
-            
-            ('pp', StandardScaler()), # Always scale expression features
-            (key, models[key])
-        ]
-    )
+    # Pipe or hyperopt-model definition
+    if GS_mode == 'random' and GS:
 
-    # Train
-    if GS:
+        # Pipelinee definiton
+        pipe = Pipeline( 
+            steps=[ 
+
+                ('pp', StandardScaler()), # Always scale expression features
+                (key, models[key])
+            ]
+        )
+        # GS definition
         model = RandomizedSearchCV(
             pipe, 
             param_distributions=params[key], 
@@ -103,12 +133,33 @@ def classification(X, y, key='logit', GS=True, n_combos=5, score='f1', cores_mod
             refit=True,
             n_jobs=cores_GS,
             scoring=score,
-            random_state=rng,
+            random_state=seed,
             cv=StratifiedShuffleSplit(n_splits=5),
             verbose=True
         )
+
+        # Fit and find best model
         model.fit(X_train, y_train)
         f = model.best_estimator_[key]
+
+    elif GS_mode == 'bayes' and GS:
+
+        # Hyperoptim model choice and training 
+        model = HyperoptEstimator(
+                    classifier=hyper_models[key], 
+                    preprocessing=[standard_scaler(name='standard_scaler', with_mean=True, with_std=True)],
+                    algo=tpe.suggest,
+                    max_evals=n_combos,
+                    loss_fn=f1_score, 
+                    trial_timeout=120,
+                    refit=True,
+                    n_jobs=cores_model,
+                    seed=seed
+                )
+        
+        # Find best model
+        model.fit(X_train, y_train)
+        f = model._best_learner
 
     else:
         model = pipe
@@ -140,12 +191,3 @@ def classification(X, y, key='logit', GS=True, n_combos=5, score='f1', cores_mod
 
 
 ##
-
-
-if __name__ == '__main__':
-    classification()
-
-
-
-
-

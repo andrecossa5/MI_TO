@@ -4,7 +4,7 @@ import pandas as pd
 from itertools import product
 
 # Lists
-samples = ['MDA', 'AML']#, 'PDX']
+samples = ['MDA', 'AML']
 input_mode = ['more_stringent']
 filtering = ['miller2022', 'MQuad', 'ludwig2019', 'pegasus']
 dimred = ['no_dimred', 'PCA', 'UMAP', 'diffmap'] 
