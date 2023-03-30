@@ -1,0 +1,61 @@
+// Config prova
+
+// Manifest
+manifest {
+  name = 'hellodio'
+  author = 'Andrea Cossa'
+  //homePage = 'https://gitlab.com/HPC_migration/nf-pgp-perturbseq'
+  description = 'Prova'
+  mainScript = 'main.nf'
+  nextflowVersion = '>=20.01.0'
+  version = '0.1'
+}
+
+// Profiles
+profiles {
+
+  hpc {
+    executor.name = 'pbspro'
+    process.queue = 'workq'
+    singularity.enabled = true
+    singularity.cacheDir = '~/.singularity'
+    singularity.runOptions = '--bind /hpcnfs'
+  }
+  local {
+    docker.enabled = true
+    docker.runOptions = '--volume /Users/:/Users/'
+  }
+
+}
+
+// Processes
+process {
+
+  errorStrategy = 'retry'
+  maxRetries = 3
+
+  withName: print_hello_cane {
+    cpus = 1
+    memory = '1G'
+    container = { profile.singularity ? 'docker://romanhaa/nf-pgp-perturbseq:0.1' : 'romanhaa/nf-pgp-perturbseq:0.1' }
+  }
+  withName: print_hello_porco {
+    cpus = 1
+    memory = '1G'
+    container = { profile.singularity ? 'docker://romanhaa/nf-pgp-perturbseq:0.1' : 'romanhaa/nf-pgp-perturbseq:0.1' }
+  }
+
+}
+
+// Params
+params {
+    names = ['dio', 'buddha']
+    n_times = 10
+    mode = ''
+}
+
+// Tracing
+trace {
+  enabled = true
+  file = "./trace.txt"
+}
