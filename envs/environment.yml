@@ -34,3 +34,5 @@ dependencies:
     - textalloc
     - zarr==2.14.2 
     - fbpca
+    - hyperopt
+    - git+https://github.com/hyperopt/hyperopt-sklearn
