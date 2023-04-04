@@ -95,6 +95,14 @@ my_parser.add_argument(
     help='ncores to use for model training. Default: 8.'
 )
 
+# GS_mode
+my_parser.add_argument(
+    '--GS_mode', 
+    type=str,
+    default='random',
+    help='Type of hyperparameters tuning. Default: random. Alternative: bayes.'
+)
+
 # min_cell_number
 my_parser.add_argument(
     '--min_cell_number', 
@@ -141,6 +149,7 @@ score = args.score
 min_cell_number = args.min_cell_number
 min_cov_treshold = args.min_cov_treshold
 n_comps = args.n_comps
+GS_mode = args.GS_mode
 
 ########################################################################
 
@@ -237,7 +246,7 @@ def main():
         a = nans_as_zeros(a) # For sklearn APIs compatibility
         ncells = a.shape[0]
         n_clones_analyzed = len(a.obs['GBC'].unique())
-        X, feature_names = reduce_dimensions(a, method=dimred, n_comps=n_comps, sqrt=False)
+        X, _ = reduce_dimensions(a, method=dimred, n_comps=n_comps, sqrt=False)
         y = pd.Categorical(a.obs['GBC'])
         Y = one_hot_from_labels(y)
     
@@ -261,8 +270,8 @@ def main():
 
         if np.sum(y_) > min_cell_number:
 
-            d = classification(X, y_, key=model, GS=True, 
-                score=score, n_combos=ncombos, cores_model=ncores, cores_GS=1, GS_mode='random')
+            d = classification(X, y_, key=model, GS=True, GS_mode=GS_mode,
+                score=score, n_combos=ncombos, cores_model=ncores, cores_GS=1)
             d |= {
                 'sample' : sample,
                 'filtering' : filtering, 
