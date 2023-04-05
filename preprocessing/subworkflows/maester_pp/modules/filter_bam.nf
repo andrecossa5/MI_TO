@@ -14,8 +14,8 @@ process FILTER_I {
 
   script:
   """
-  samtools index -@ 15 ${bam}
-  samtools view ${bam} -b -@ 15 chrM > mitobam_I.bam
+  samtools index -@ 8 ${bam}
+  samtools view ${bam} -b -@ ${task.cpus} chrM > mitobam_I.bam
   """
 
   stub:
@@ -37,8 +37,8 @@ process FILTER_II {
 
   script:
   """
-  samtools index -@ 15 ${bam}
-  samtools view ${bam} -b -@ 15 chrM > mitobam_II.bam
+  samtools index -@ 8 ${bam}
+  samtools view ${bam} -b -@ ${task.cpus} chrM > mitobam_II.bam
   """
 
   stub:

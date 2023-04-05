@@ -15,7 +15,7 @@ process STAR {
   script:
   """
   /STAR-2.7.9a/source/STAR \
-    --runThreadN 15 \
+    --runThreadN ${task.cpus} \
     --genomeDir ${params.maester_pp.ref} \
     --readFilesIn ${fastq}
     --readFilesCommand zcat \

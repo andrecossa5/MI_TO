@@ -15,9 +15,9 @@ process MERGE {
 
   script:
   """
-  samtools index -@ 10 ${bam_1}
-  samtools index -@ 10 ${bam_2}
-  samtools merge -@ 10 ./merged_mitobam.bam ${bam_1} ${bam_2}
+  samtools index -@ ${task.cpus} ${bam_1}
+  samtools index -@ ${task.cpus} ${bam_2}
+  samtools merge -@ ${task.cpus} ./merged_mitobam.bam ${bam_1} ${bam_2}
   """
 
   stub:
