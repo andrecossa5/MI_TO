@@ -151,3 +151,8 @@ three_samples_analyses/nextflow/.nextflow.log*
 three_samples_analyses/nextflow/.nextflow/*
 three_samples_analyses/nextflow/work/
 */.nextflow*
+*/work
+*/trace*
+
+
+
