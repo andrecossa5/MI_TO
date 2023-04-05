@@ -17,7 +17,7 @@ process EXTRACT_R2 {
   zcat ${R2_raw} \
   | sed -n '1~4s/^@/>/p;2~4p' \
   | awk '{if(NR%2){print \$0}else{print substr(\$0, 1, 33);}}' \
-  | gzip --fast \
+  | pigz --fast -p ${task.cpus} \
   > R2_first_33_nt.fa.gz
   """
 

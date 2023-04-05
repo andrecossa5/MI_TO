@@ -26,7 +26,7 @@ process PREP_GBC {
   seqtk subseq \
   ${R2_raw} \
   ${reads_aligned} \
-  | gzip \
+  | gzip --fast \
   > aligned_R2.fq.gz
   """
 

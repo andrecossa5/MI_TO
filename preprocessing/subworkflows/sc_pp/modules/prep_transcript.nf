@@ -26,7 +26,7 @@ process PREP_TRANSCRIPT {
   seqtk subseq \
   ${R2_raw} \
   ${reads_transcriptomic} \
-  | gzip \
+  | gzip --fast \
   > transcriptomic_R2.fq.gz
   """
 

@@ -16,7 +16,7 @@ process GBC_TO_FASTA {
   """
   awk '{ gsub("@",">",\$1); print }' ${GBCs} \
   | tr ' ' '\n' \
-  | gzip --fast \
+  | pigz --fast -p ${task.cpus} \
   > GBC_to_align.fa.gz
   """
 
