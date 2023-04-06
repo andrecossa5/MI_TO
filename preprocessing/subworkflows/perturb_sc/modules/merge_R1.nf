@@ -10,7 +10,7 @@ process MERGE_R1 {
   tuple val(sample), val(in_folder)
 
   output:
-  path "R1_raw.fq.gz", emit: R1
+  path "R1_raw.fastq.gz", emit: R1
 
   script:
   """
