@@ -1,29 +1,27 @@
 // nf-perturbseq-pipeline
  
 nextflow.enable.dsl = 2
-include { sc_pp } from "./subworkflows/sc_pp/main"
-include { maester_pp } from "./subworkflows/maester_pp/main"
-include { tenx_pp } from "./subworkflows/tenx_pp/main"
-
-//
+include { perturb_sc } from "./subworkflows/perturb_sc/main"
+include { maester } from "./subworkflows/maester/main"
+include { tenx } from "./subworkflows/tenx/main"
 
 // Perturb-seq input sc_fastqs 
-ch_perturb = Channel
-    .fromPath("${params.sc_pp.indir}/*", type:'dir') 
+ch_perturb_sc = Channel
+    .fromPath("${params.perturb_sc_indir}/*", type:'dir') 
     .map{ tuple(it.getName(), it) }
 
 //
 
 // MAESTER input sc_fastq
-ch_MAESTER = Channel
-    .fromPath("${params.maester_pp.indir}/*", type:'dir') 
+ch_maester = Channel
+    .fromPath("${params.maester_indir}/*", type:'dir') 
     .map{ tuple(it.getName(), it) }
 
 // 
 
 // 10x only input sc_fastqs
 ch_tenx = Channel
-    .fromPath("${params.tenx_pp.indir}/*", type:'dir') 
+    .fromPath("${params.tenx_indir}/*", type:'dir') 
     .map{ tuple(it.getName(), it) }
 
 //
@@ -36,9 +34,9 @@ ch_tenx = Channel
 
 workflow tenx_only {
 
-    tenx_pp(ch_tenx)
-    tenx_pp.out.filtered.view()
-    tenx_pp.out.bam.view()
+    tenx(ch_tenx)
+    tenx.out.filtered.view()
+    tenx.out.bam.view()
 
 }
 
@@ -46,9 +44,9 @@ workflow tenx_only {
 
 workflow perturbseq_only {
 
-    sc_pp(ch_perturb)
-    sc_pp.out.filtered.view()
-    sc_pp.out.bam.view()
+    perturb_sc(ch_perturb_sc)
+    perturb_sc.out.filtered.view()
+    perturb_sc.out.bam.view()
 
 }
 
@@ -56,10 +54,10 @@ workflow perturbseq_only {
 
 workflow tenx_mito {
 
-    tenx_pp(ch_tenx)
-    maester_pp(ch_MAESTER, tenx_pp.out.filtered, tenx_pp.out.bam)
-    maester_pp.out.outputs.view()
-    maester_pp.out.afm.view()
+    tenx(ch_tenx)
+    maester(ch_maester, tenx.out.filtered, tenx.out.bam)
+    maester.out.outputs.view()
+    maester.out.afm.view()
 
 }
 
@@ -67,10 +65,10 @@ workflow tenx_mito {
 
 workflow gbc_mito {
 
-    sc_pp(ch_perturb)
-    maester_pp(ch_MAESTER, sc_pp.out.filtered, sc_pp.out.bam)
-    maester_pp.out.outputs.view()
-    maester_pp.out.afm.view()
+    perturb_sc(ch_pertur_sc)
+    maester(ch_maester, perturb_sc.out.filtered, perturb_sc.out.bam)
+    maester.out.outputs.view()
+    maester.out.afm.view()
 
 }
 
@@ -78,7 +76,7 @@ workflow gbc_mito {
 
 // Mock
 workflow  {
-
+    
     Channel.of(1,2,3,4) | view
 
 }

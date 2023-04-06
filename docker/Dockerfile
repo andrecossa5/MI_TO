@@ -1,4 +1,4 @@
-# MI_TO benchmark image
+# MI_TO image
 
 ################################################################
 
@@ -35,8 +35,17 @@ RUN git clone https://github.com/andrecossa5/MI_TO.git \
     && mamba env update -n base -f envs/environment.yml \
     && mamba develop .. \
     && mamba develop ../MI_TO/ 
-RUN pip install dnaio
- 
+
+# RUN pipelines/genomics utils
+RUN apt-get --quiet update --yes \
+    && apt-get --quiet upgrade --yes \
+    && apt-get --quiet install --yes pigz
+
+RUN mamba install --yes -c bioconda samtools
+RUN pip install dnaio pysam
+RUN pip install maegatk
+# RUN conda install cellsnp-lite
+
 ## Default command to initialize the container
 CMD [ "bash" ]
 
