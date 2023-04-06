@@ -50,8 +50,8 @@ workflow maester {
     
     take:
         ch_input
-        not_enriched_bam
-        filtered  
+        filtered
+        not_enriched_bam  
 
     main:
         MERGE_R1(ch_input)
