@@ -1,5 +1,4 @@
-// nf-perturbseq-pipeline
- 
+// MI_TO pipeline
 nextflow.enable.dsl = 2
 include { perturb_sc } from "./subworkflows/perturb_sc/main"
 include { maester } from "./subworkflows/maester/main"
@@ -65,7 +64,7 @@ workflow tenx_mito {
 
 workflow gbc_mito {
 
-    perturb_sc(ch_pertur_sc)
+    perturb_sc(ch_perturb_sc)
     maester(ch_maester, perturb_sc.out.filtered, perturb_sc.out.bam)
     maester.out.outputs.view()
     maester.out.afm.view()

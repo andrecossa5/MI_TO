@@ -16,31 +16,29 @@ include { TO_H5AD } from "./modules/to_h5ad.nf"
 
 // 
 
-// process publish_maester {
-// 
-//     publishDir "${params.maester_outdir}/${sample}/", mode: 'copy'
-// 
-//     input:
-//     tuple val(sample), val(in_folder)
-//     path raw
-//     path filtered
-//     path stats
-//     path summary
-//     path bam
-// 
-//     output:
-//     path raw
-//     path filtered
-//     path stats
-//     path summary
-//     path bam
-// 
-//     script:
-//     """
-//     echo moving everything to ${params.maester_outdir}
-//     """
-// 
-// }
+process publish_maester {
+
+    publishDir "${params.maester_outdir}/${sample}/", mode: 'copy'
+
+    input:
+    tuple val(sample), val(in_folder)
+    path bam
+    path index
+    path maegatk_out
+    path afm
+
+    output:
+    path bam
+    path index
+    path maegatk_out
+    path afm
+
+    script:
+    """
+    echo moving everything to ${params.maester_outdir}
+    """
+
+}
 
 // 
 
@@ -66,6 +64,13 @@ workflow maester {
         INDEX(MERGE.out.mitobam)
         MAEGATK(INDEX.out.bam, INDEX.out.index, filtered)
         TO_H5AD(MAEGATK.out.output)
+        publish_maester(
+            ch_input,
+            INDEX.out.bam, 
+            INDEX.out.index,
+            MAEGATK.out.output, 
+            TO_H5AD.out.afm
+        )
 
     emit:
         outputs = MAEGATK.out.output
