@@ -10,16 +10,16 @@ process MERGE_R2 {
   tuple val(sample), val(in_folder)
 
   output:
-  path "R1_raw.fastq.gz", emit: R1
+  path "R2_raw.fastq.gz", emit: R2
 
   script:
   """
-  zcat ${in_folder}/*R1*.fastq.gz | pigz --fast -p ${task.cpus} > R1_raw.fastq.gz
+  zcat ${in_folder}/*R2*.fastq.gz | pigz --fast -p ${task.cpus} > R2_raw.fastq.gz
   """
 
   stub:
   """
-  touch R1_raw.fastq.gz
+  touch R2_raw.fastq.gz
   """
 
 }
