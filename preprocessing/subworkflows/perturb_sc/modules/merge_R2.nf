@@ -19,11 +19,11 @@ process MERGE_R2 {
   zcat ${in_folder}/*R2*.fastq.gz \
   | awk '{if(NR%4==1){print "@"(NR%1?c+1:++c)} else {print \$0}}' \
   | pigz --fast -p ${task.cpus} \
-  > R2_raw.fq.gz
+  > R2_raw.fastq.gz
   """
 
   stub:
   """
-  touch R2_raw.fq.gz
+  touch R2_raw.fastq.gz
   """
 }
