@@ -9,7 +9,7 @@ R2 = sys.argv[1]
 
 #Open
 reader = dnaio.open(R1, file2=R2)
-writer = dnaio.open('assembled_fastq.gz', mode='w')
+writer = dnaio.open('assembled.fastq.gz', mode='w')
 
 #Iterate
 for r1, r2 in reader:

@@ -11,7 +11,7 @@ process ASSEMBLE_FQ {
   path R2
 
   output:
-  path "assembled_fastq.gz", emit: fq
+  path "assembled.fastq.gz", emit: fq
 
   script:
   """
