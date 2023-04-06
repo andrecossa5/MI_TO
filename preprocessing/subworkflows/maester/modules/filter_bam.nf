@@ -14,7 +14,7 @@ process FILTER_I {
 
   script:
   """
-  samtools index -@ 8 ${bam}
+  samtools index -@ ${task.cpus} ${bam}
   samtools view ${bam} -b -@ ${task.cpus} chrM > mitobam_I.bam
   """
 

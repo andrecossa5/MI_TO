@@ -23,4 +23,3 @@ for r1, r2 in reader:
 # Close
 reader.close()
 writer.close()
-

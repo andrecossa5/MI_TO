@@ -2,8 +2,8 @@
 
 // Include here
 nextflow.enable.dsl = 2
-include { MERGE_R1 } from "../perturb_sc/modules/merge_R1.nf"
-include { MERGE_R2 } from "../perturb_sc/modules/merge_R2.nf"
+include { MERGE_R1 } from "./modules/merge_R1.nf"
+include { MERGE_R2 } from "./modules/merge_R2.nf"
 include { ASSEMBLE_FQ } from "./modules/assemble_fastq.nf"
 include { STAR } from "./modules/STAR.nf"
 include { FILTER_I } from "./modules/filter_bam.nf"
