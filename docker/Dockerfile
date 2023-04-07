@@ -43,8 +43,9 @@ RUN apt-get --quiet update --yes \
 
 RUN mamba install --yes -c bioconda samtools
 RUN pip install dnaio pysam
-RUN pip install maegatk
-# RUN conda install cellsnp-lite
+RUN mamba install --yes -c conda-forge openjdk
+RUN mamba install --yes -c bioconda snakemake fgbio 
+RUN pip3 install maegatk
 
 ## Default command to initialize the container
 CMD [ "bash" ]
