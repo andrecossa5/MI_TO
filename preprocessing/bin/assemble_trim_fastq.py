@@ -2,24 +2,21 @@
 
 import sys
 import dnaio
+import math
 
 # Args
 R1 = sys.argv[1]
-R2 = sys.argv[1]
+R2 = sys.argv[2]
+cpus = sys.argv[3]
 
-#Open
-reader = dnaio.open(R1, file2=R2)
-writer = dnaio.open('assembled.fastq.gz', mode='w')
+# Set cores
+cpus = math.floor(float(cpus))
 
-#Iterate
-for r1, r2 in reader:
-    #Get cbc, umi
-    cbc, umi = r1.sequence[:16], r1.sequence[16:]
-    #Trim R2
-    r2.sequence, r2.qualities = r2.sequence[24:], r2.qualities[24:]
-    r2.name = '_'.join( r2.name.replace('/', '.').split(' ') + [cbc] + [umi] )
-    writer.write(r2)
+# Read-format write
+with dnaio.open(R1, R2, mode='r', open_threads=cpus) as reader, \
+    dnaio.open(f'assembled.fastq.gz', mode='w', open_threads=cpus) as writer:
 
-# Close
-reader.close()
-writer.close()
+    for r1, r2 in reader: 
+        cbc, umi = r1.sequence[:16], r1.sequence[16:] 
+        r2.name = '_'.join( r2.name.replace('/', '.').split(' ') + [cbc] + [umi] )
+        writer.write(r2)
