@@ -110,7 +110,7 @@ supported_genomes = [
 ]  
 
 fastaf, mito_chr, mito_length = handle_fasta_inference(mito_genome, supported_genomes, script_dir, 'bcall', of)
-idxs = pysam.idxstats(input).split("\n") 
+idxs = pysam.idxstats(bam).split("\n") 
 
 try:
     bam_length = [ int(x.split('\t')[1]) for x in idxs if x.startswith(mito_chr) ][0]
@@ -153,7 +153,7 @@ split_barcoded_bam_py = script_dir + "/bin/python/split_barcoded_bam.py"
 
 for i in range(len(barcode_files)):
     one_barcode_file = barcode_files[i]
-    pycall = " ".join(['python', split_barcoded_bam_py, input, bcbd, barcode_tag, one_barcode_file, mito_chr])
+    pycall = " ".join(['python', split_barcoded_bam_py, bam, bcbd, barcode_tag, one_barcode_file, mito_chr])
     os.system(pycall)
     
 click.echo(gettime() + "Finished determining/splitting barcodes for genotyping.")
@@ -163,7 +163,7 @@ click.echo(gettime() + "Finished determining/splitting barcodes for genotyping."
 
 
 ## Summary input checks
-click.echo(gettime() + f'Input .bam: {input}')
+click.echo(gettime() + f'Input .bam: {bam}')
 click.echo(gettime() + f'Reference mito genome: {mito_genome}')
 click.echo(gettime() + f'Min reads: {min_reads}')
 click.echo(gettime() + f'Find barcodes: {find_barcodes}')
@@ -174,9 +174,9 @@ click.echo(gettime() + f'N cores: {ncores}')
 
 
 # CHECK-IN pt II: discard low quality cells
-input = bcbd
+bam = bcbd
 
-if len(os.listdir(input)) == 0:
+if len(os.listdir(bam)) == 0:
     sys.exit('ERROR: Could not import any samples from the user specification; check flags, logs and input configuration; QUITTING')
 else:
     bams = [ f'{input}/{x}' for x in os.listdir(bcbd) ]
