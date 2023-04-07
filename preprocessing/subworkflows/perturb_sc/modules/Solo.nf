@@ -22,7 +22,7 @@ process SOLO {
   STAR \
     --runThreadN ${task.cpus} \
     --genomeDir ${params.ref} \
-    --readFilesIn ${transcript_R1} ${transcript_R1} \
+    --readFilesIn ${transcript_R2} ${transcript_R1} \
     --readFilesCommand zcat \
     --outTmpDir tmp \
     --outSAMtype BAM SortedByCoordinate \
