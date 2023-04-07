@@ -13,11 +13,11 @@ process MAEGATK {
 
   output:
   path "final", emit: output
-
+ 
   script:
   """
   zcat ./filtered/barcodes.tsv.gz > ./barcodes.txt
-  
+
   python ${baseDir}/bin/maegatk_cli.py \
   ${params.maester_code_dir} \
   ${mitobam} \
