@@ -17,10 +17,10 @@ process STAR {
   /STAR-2.7.9a/source/STAR \
     --runThreadN ${task.cpus} \
     --genomeDir ${params.ref} \
-    --readFilesIn ${fastq}
+    --readFilesIn ${fastq} \
     --readFilesCommand zcat \
     --outSAMtype BAM SortedByCoordinate \
-    --outSAMattributes NH HI nM AS 
+    --outSAMattributes NH HI nM AS
   """
 
   stub:
