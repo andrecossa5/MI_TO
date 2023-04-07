@@ -15,7 +15,7 @@ process ASSEMBLE_FQ {
 
   script:
   """
-  python ${baseDir}/bin/assemble_trim_fastq.py ${R1} ${R2}
+  python ${baseDir}/bin/assemble_trim_fastq.py ${R1} ${R2} ${task.cpus}
   """
 
   stub:
