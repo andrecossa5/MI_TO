@@ -31,9 +31,9 @@ from multiprocessing import Pool, cpu_count
 # Optional args. STRICTLY, THE ONLY ONE THAT NEED TO BE PASSED.
 script_dir = sys.argv[1]
 bam = sys.argv[2]
-ncores = sys.argv[4]
-barcodes = sys.argv[5]
-min_reads = sys.argv[6]
+ncores = sys.argv[3]
+barcodes = sys.argv[4]
+min_reads = sys.argv[5]
 output = os.getcwd()
 
 

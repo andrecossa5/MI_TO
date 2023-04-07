@@ -25,7 +25,7 @@ process MAEGATK {
   ./barcodes.txt \
   ${params.maester_min_reads} \
   """
-
+  
   stub:
   """
   mkdir final
