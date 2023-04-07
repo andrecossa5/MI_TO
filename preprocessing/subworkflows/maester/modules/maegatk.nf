@@ -18,7 +18,7 @@ process MAEGATK {
   """
   zcat ./filtered/barcodes.tsv.gz > ./barcodes.txt
 
-  maegtk bcall -i ${mitobam} \
+  maegatk bcall -i ${mitobam} \
   -g rCRS \
   -c ${task.cpus} \
   -b ./barcodes.txt \
