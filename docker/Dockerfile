@@ -45,7 +45,7 @@ RUN mamba install --yes -c bioconda samtools
 RUN pip install dnaio pysam
 RUN mamba install --yes -c conda-forge openjdk
 RUN mamba install --yes -c bioconda snakemake fgbio 
-RUN pip3 install maegatk
+RUN git clone https://github.com/caleblareau/maegatk.git 
 
 ## Default command to initialize the container
 CMD [ "bash" ]

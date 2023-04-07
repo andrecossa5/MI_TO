@@ -19,7 +19,7 @@ import pandas as pd
 from pkg_resources import get_distribution
 from subprocess import call, check_call
 
-from maegatk.maegatkHelp import *
+from maegatk.maegatk.maegatkHelp import *
 from ruamel import yaml
 from ruamel.yaml.scalarstring import SingleQuotedScalarString as sqs
 from multiprocessing import Pool, cpu_count
