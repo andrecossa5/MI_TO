@@ -179,7 +179,7 @@ bam = bcbd
 if len(os.listdir(bam)) == 0:
     sys.exit('ERROR: Could not import any samples from the user specification; check flags, logs and input configuration; QUITTING')
 else:
-    bams = [ f'{input}/{x}' for x in os.listdir(bcbd) ]
+    bams = [ f'{bam}/{x}' for x in os.listdir(bcbd) ]
 
 samples = []
 samplebams = []
