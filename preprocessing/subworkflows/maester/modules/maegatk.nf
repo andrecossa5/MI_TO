@@ -18,17 +18,24 @@ process MAEGATK {
   """
   zcat ./filtered/barcodes.tsv.gz > ./barcodes.txt
 
-  python ${baseDir}/bin/maegatk_cli.py \
-  ${params.maester_code_dir} \
-  ${mitobam} \
-  ${task.cpus} \
-  ./barcodes.txt \
-  ${params.maester_min_reads} \
+  maegtk bcall -i ${mitobam} \
+  -g rCRS \
+  -c ${task.cpus} \
+  -b ./barcodes.txt \
+  -mr 3 -c 4 -sr
   """
-  
+
   stub:
   """
   mkdir final
   """
 
 }
+
+
+// python ${baseDir}/bin/maegatk_cli.py \
+// ${params.maester_code_dir} \
+// ${mitobam} \
+// ${task.cpus} \
+// ./barcodes.txt \
+// ${params.maester_min_reads} 
