@@ -121,10 +121,10 @@ if(mito_length == bam_length):
     click.echo(gettime() + "User specified mitochondrial genome matches .bam file")
 elif(bam_length == 16569):
     click.echo(gettime() + "User specified mitochondrial genome does NOT match .bam file; using rCRS instead (length == 16569)")
-    fastaf, mito_chr, mito_length = handle_fasta_inference("rCRS", supported_genomes, script_dir, mode, of)
+    fastaf, mito_chr, mito_length = handle_fasta_inference("rCRS", supported_genomes, script_dir, 'bcall', of)
 elif(bam_length == 16571):
     click.echo(gettime() + "User specified mitochondrial genome does NOT match .bam file; using hg19 instead (length == 16571)")
-    fastaf, mito_chr, mito_length = handle_fasta_inference("hg19", supported_genomes, script_dir, mode, of)
+    fastaf, mito_chr, mito_length = handle_fasta_inference("hg19", supported_genomes, script_dir, 'bcall', of)
 else:
     click.echo(gettime() + "User specified mitochondrial genome does NOT match .bam file; correctly specify reference genome or .fasta file")
     quit()

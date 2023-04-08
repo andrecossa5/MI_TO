@@ -46,6 +46,7 @@ RUN pip install dnaio pysam
 RUN mamba install --yes -c conda-forge openjdk
 RUN mamba install --yes -c bioconda snakemake fgbio 
 RUN git clone https://github.com/caleblareau/maegatk.git 
+RUN mamba install --yes -c bioconda bedtools bwa
 
 ## Default command to initialize the container
 CMD [ "bash" ]
