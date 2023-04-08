@@ -26,12 +26,13 @@ def check_files(path_folder):
 ##
 
 
-def sparse_from_long(df, cells_map, covariate):
+def sparse_from_long(df, cells_map, covariate, nrow, ncol):
     """
     Make a long df a sparse matrix. 
     """
     df['cell_id'] = df['cell'].map(lambda x: cells_map[x])
     df = df.loc[:, ['cell_id', 'pos', covariate]]
+    df['pos'] = df['pos']-1 
     rows, cols, vals = list(zip(*df.values.tolist()))
     matrix = csr_matrix((vals, (rows, cols)), shape=(nrow, ncol))
 
@@ -71,7 +72,7 @@ ncol = ref_alleles.shape[0]
 d = {}
 
 # Coverage
-d['cov'] = sparse_from_long(cov, cells_map, 'cov')
+d['cov'] = sparse_from_long(cov, cells_map, 'cov', nrow, ncol)
 
 # Base counts and qualities
 covariates = ['counts_fw', 'qual_fw', 'counts_rev', 'qual_rev']
@@ -87,7 +88,7 @@ for k in base_files:
         names=['pos', 'cell'] + covariates
     )
     for covariate in covariates:
-        d[f'{k}_{covariate}'] = sparse_from_long(df_base, cells_map, covariate)
+        d[f'{k}_{covariate}'] = sparse_from_long(df_base, cells_map, covariate, nrow, ncol)
 
 # Build the AnnData
 cells_meta = pd.Series(cells_map).to_frame().reset_index().iloc[:,[0]].set_index('index')
