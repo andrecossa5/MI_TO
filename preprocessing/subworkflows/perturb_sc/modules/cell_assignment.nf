@@ -21,7 +21,7 @@ process CELL_ASSIGNMENT {
 
   script:
   """
-  python ${baseDir}/bin/sc_pp/cell_assignment.py \
+  python ${baseDir}/bin/cell_assignment.py \
   ${CBCs} ${UMIs} ${GBCs} ${reads_aligned_to_ref}
   """
 
