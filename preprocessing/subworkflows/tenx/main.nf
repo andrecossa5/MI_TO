@@ -13,7 +13,7 @@ process publish_tenx {
     publishDir "${params.tenx_outdir}/${sample}/", mode: 'copy'
 
     input:
-    tuple val(sample_name)
+    tuple val(sample_name),
           path (raw),
           path (filtered),
           path (stats), 

@@ -44,17 +44,17 @@ process generate_run_summary_sc {
     echo "- Working directory: ${PWD}" >> run_summary.txt
     echo "" >> run_summary.txt
     echo "Parameters" >> run_summary.txt
-    echo "--indir:                ${params.sc_indir}" >> run_summary.txt
-    echo "--outdir:               ${params.sc_outdir}" >> run_summary.txt
-    echo "${sample_name} specific I/O: ${params.sc_indir}/${sample_name}, ${params.sc_outdir}/${sample_name}" >> run_summary.txt
-    echo "--step_1_out:           ${params.sc_outdir}" >> run_summary.txt
-    echo "--pattern:              ${params.sc_pattern}" >> run_summary.txt
+    echo "--indir:                ${params.perturb_sc_indir}" >> run_summary.txt
+    echo "--outdir:               ${params.perturb_sc_outdir}" >> run_summary.txt
+    echo "${sample_name} specific I/O: ${params.perturb_sc_indir}/${sample_name}, ${params.perturb_sc_outdir}/${sample_name}" >> run_summary.txt
+    echo "--step_1_out:           ${params.perturb_bulk_out}" >> run_summary.txt
+    echo "--pattern:              ${params.perturb_sc_pattern}" >> run_summary.txt
     echo "--ref:                  ${params.ref}" >> run_summary.txt
     echo "Numbers" >> run_summary.txt
     echo "- Reads in input:                  \$(cat ${all_reads} | wc -l | LC_ALL=en_US.UTF-8 awk '{ printf("%'"'"'d", \$0) }')" >> run_summary.txt
     echo "- Transcriptomic reads:            \$(cat ${reads_transcript} | wc -l | LC_ALL=en_US.UTF-8 awk '{ printf("%'"'"'d", \$0) }')" >> run_summary.txt
     echo "- GBC-containing reads:            \$(cat ${reads_aligned} | wc -l | LC_ALL=en_US.UTF-8 awk '{ printf("%'"'"'d", \$0) }')" >> run_summary.txt
-    echo "- Unique GBC in reference:         \$(cat ${params.bulk_outdir}/${sample_name}/read_count_by_GBC_corrected.tsv | wc -l | LC_ALL=en_US.UTF-8 awk '{ printf("%'"'"'d", \$0) }')" >> run_summary.txt
+    echo "- Unique GBC in reference:         \$(cat ${params.perturb_bulk_out}/${sample_name}/read_count_by_GBC_corrected.tsv | wc -l | LC_ALL=en_US.UTF-8 awk '{ printf("%'"'"'d", \$0) }')" >> run_summary.txt
     echo "- Unique GBC found in this sample: \$(cat ${GBCs} | wc -l | LC_ALL=en_US.UTF-8 awk '{ printf("%'"'"'d", \$0) }')" >> run_summary.txt
     echo "- Putative cell n (Solo cell-calling): \$(zcat ${filtered}/barcodes.tsv.gz | wc -l | LC_ALL=en_US.UTF-8 awk '{ printf("%'"'"'d", \$0) }')" >> run_summary.txt
     echo "- Total number of transcripts:     \$(zcat ${filtered}/features.tsv.gz | wc -l | LC_ALL=en_US.UTF-8 awk '{ printf("%'"'"'d", \$0) }')" >> run_summary.txt
@@ -67,7 +67,7 @@ process generate_run_summary_sc {
 process publish_sc {
 
     tag "${sample_name}"
-    publishDir "${params.sc_outdir}/${sample_name}/", mode: 'copy'
+    publishDir "${params.perturb_sc_outdir}/${sample_name}/", mode: 'copy'
 
     input:
     tuple val(sample_name), 
@@ -96,16 +96,16 @@ process publish_sc {
 
     script:
     """
-    echo "Moving all output files to ${params.sc_outdir}/${sample_name}/..."
+    echo "Moving all output files to ${params.perturb_sc_outdir}/${sample_name}/..."
     """
 
 }
 
 //----------------------------------------------------------------------------//
-// sc_pp subworkflow
+// perturb_sc subworkflow
 //----------------------------------------------------------------------------//
 
-workflow sc {
+workflow perturb_sc {
     
     take:
         ch_input

@@ -14,7 +14,7 @@ process BOWTIE_INDEX_GBC_PATTERN {
   mkdir -p GBC_pattern
 
   echo ">construct" > GBC_pattern.fa
-  echo "${params.sc_pattern}" >> GBC_pattern.fa
+  echo "${params.perturb_sc_pattern}" >> GBC_pattern.fa
 
   bowtie2-build \
   -f GBC_pattern.fa \
