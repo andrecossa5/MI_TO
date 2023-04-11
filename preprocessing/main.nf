@@ -55,7 +55,6 @@ workflow tenx_mito {
 
     tenx(ch_tenx)
     maester(ch_maester, tenx.out.filtered, tenx.out.bam)
-    maester.out.outputs.view()
     maester.out.afm.view()
 
 }
