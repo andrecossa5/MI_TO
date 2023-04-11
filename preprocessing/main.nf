@@ -65,7 +65,6 @@ workflow gbc_mito {
 
     perturb_sc(ch_perturb_sc)
     maester(ch_maester, perturb_sc.out.filtered, perturb_sc.out.bam)
-    maester.out.outputs.view()
     maester.out.afm.view()
 
 }
