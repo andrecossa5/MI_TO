@@ -6,11 +6,13 @@ nextflow.enable.dsl = 2
 
 process STAR {
 
+  tag "${sample_name}"
+
   input:
-  path fastq
+  tuple val(sample_name), path(fastq)
 
   output:
-  path "Aligned.sortedByCoord.out.bam", emit: bam
+  tuple val(sample_name), path("Aligned.sortedByCoord.out.bam"), emit: bam
 
   script:
   """

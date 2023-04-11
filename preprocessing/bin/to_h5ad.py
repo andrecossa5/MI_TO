@@ -32,7 +32,7 @@ def sparse_from_long(df, cells_map, covariate, nrow, ncol):
     """
     df['cell_id'] = df['cell'].map(lambda x: cells_map[x])
     df = df.loc[:, ['cell_id', 'pos', covariate]]
-    df['pos'] = df['pos']-1 
+    df['pos'] = df['pos']-1 # index is 0-based. Positions are 1.
     rows, cols, vals = list(zip(*df.values.tolist()))
     matrix = csr_matrix((vals, (rows, cols)), shape=(nrow, ncol))
 

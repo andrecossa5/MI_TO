@@ -6,11 +6,13 @@ nextflow.enable.dsl = 2
 
 process GBC_TO_FASTA {
 
+  tag "${sample_name}"
+
   input:
-  path GBCs
+  tuple val(sample_name), path(GBCs)
 
   output:
-  path "GBC_to_align.fa.gz", emit: fasta
+  tuple val(sample_name), path("GBC_to_align.fa.gz"), emit: fasta
 
   script:
   """
@@ -22,6 +24,7 @@ process GBC_TO_FASTA {
 
   stub:
   """
+  echo ${sample_name} > sample
   touch GBC_to_align.fa.gz
   """
 }

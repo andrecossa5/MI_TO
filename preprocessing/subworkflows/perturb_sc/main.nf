@@ -1,4 +1,4 @@
-// Sc_pp subworkflow
+// sc subworkflow
 
 nextflow.enable.dsl = 2
 
@@ -24,21 +24,18 @@ include { CELL_ASSIGNMENT } from "./modules/cell_assignment.nf"
 //
 
 process generate_run_summary_sc {
+
+    tag "${sample_name}"
  
     input:
-    tuple val(sample), val(in_folder)
-    path all_reads
-    path reads_transcript
-    path reads_aligned
-    path GBCs
-    path filtered
+    tuple val(sample_name), path(all_reads), path(reads_transcript), path(reads_aligned), path(GBCs), path(filtered)
   
     output:
-    path "run_summary.txt", emit: run_summary
+    tuple val(sample_name), path("run_summary.txt"), emit: run_summary
 
     script:
     """
-    echo "Summary Step 2, sample ${sample}" > run_summary.txt
+    echo "Summary Step 2, sample ${sample_name}" > run_summary.txt
     echo "-------------------------------------" >> run_summary.txt
     echo "" >> run_summary.txt
     echo "Overview" >> run_summary.txt
@@ -47,17 +44,17 @@ process generate_run_summary_sc {
     echo "- Working directory: ${PWD}" >> run_summary.txt
     echo "" >> run_summary.txt
     echo "Parameters" >> run_summary.txt
-    echo "--indir:                ${params.perturb_sc_indir}" >> run_summary.txt
-    echo "--outdir:               ${params.perturb_sc_outdir}" >> run_summary.txt
-    echo "${sample} specific I/O: ${params.perturb_sc_indir}/${sample}, ${params.perturb_sc_outdir}/${sample}" >> run_summary.txt
-    echo "--step_1_out:           ${params.perturb_bulk_out}" >> run_summary.txt
-    echo "--pattern:              ${params.perturb_sc_pattern}" >> run_summary.txt
+    echo "--indir:                ${params.sc_indir}" >> run_summary.txt
+    echo "--outdir:               ${params.sc_outdir}" >> run_summary.txt
+    echo "${sample_name} specific I/O: ${params.sc_indir}/${sample_name}, ${params.sc_outdir}/${sample_name}" >> run_summary.txt
+    echo "--step_1_out:           ${params.sc_outdir}" >> run_summary.txt
+    echo "--pattern:              ${params.sc_pattern}" >> run_summary.txt
     echo "--ref:                  ${params.ref}" >> run_summary.txt
     echo "Numbers" >> run_summary.txt
     echo "- Reads in input:                  \$(cat ${all_reads} | wc -l | LC_ALL=en_US.UTF-8 awk '{ printf("%'"'"'d", \$0) }')" >> run_summary.txt
     echo "- Transcriptomic reads:            \$(cat ${reads_transcript} | wc -l | LC_ALL=en_US.UTF-8 awk '{ printf("%'"'"'d", \$0) }')" >> run_summary.txt
     echo "- GBC-containing reads:            \$(cat ${reads_aligned} | wc -l | LC_ALL=en_US.UTF-8 awk '{ printf("%'"'"'d", \$0) }')" >> run_summary.txt
-    echo "- Unique GBC in reference:         \$(cat ${params.perturb_bulk_out}/${sample}/read_count_by_GBC_corrected.tsv | wc -l | LC_ALL=en_US.UTF-8 awk '{ printf("%'"'"'d", \$0) }')" >> run_summary.txt
+    echo "- Unique GBC in reference:         \$(cat ${params.bulk_outdir}/${sample_name}/read_count_by_GBC_corrected.tsv | wc -l | LC_ALL=en_US.UTF-8 awk '{ printf("%'"'"'d", \$0) }')" >> run_summary.txt
     echo "- Unique GBC found in this sample: \$(cat ${GBCs} | wc -l | LC_ALL=en_US.UTF-8 awk '{ printf("%'"'"'d", \$0) }')" >> run_summary.txt
     echo "- Putative cell n (Solo cell-calling): \$(zcat ${filtered}/barcodes.tsv.gz | wc -l | LC_ALL=en_US.UTF-8 awk '{ printf("%'"'"'d", \$0) }')" >> run_summary.txt
     echo "- Total number of transcripts:     \$(zcat ${filtered}/features.tsv.gz | wc -l | LC_ALL=en_US.UTF-8 awk '{ printf("%'"'"'d", \$0) }')" >> run_summary.txt
@@ -69,20 +66,21 @@ process generate_run_summary_sc {
 
 process publish_sc {
 
-    publishDir "${params.perturb_sc_outdir}/${sample}/", mode: 'copy'
+    tag "${sample_name}"
+    publishDir "${params.sc_outdir}/${sample_name}/", mode: 'copy'
 
     input:
-    tuple val(sample), val(in_folder)
-    path CBC_GBC
-    path CBC_GBC_plot
-    path cells_summary
-    path clones_summary
-    path bam
-    path stats
-    path summary
-    path filtered
-    path raw
-    path run_summary
+    tuple val(sample_name), 
+          path(CBC_GBC), 
+          path(CBC_GBC_plot), 
+          path(cells_summary), 
+          path(clones_summary), 
+          path(bam), 
+          path(stats),
+          path(summary), 
+          path(filtered), 
+          path(raw), 
+          path(run_summary)
 
     output:
     path raw
@@ -98,23 +96,23 @@ process publish_sc {
 
     script:
     """
-    echo "Moving all output files to ${params.perturb_sc_outdir}/${sample}/..."
+    echo "Moving all output files to ${params.sc_outdir}/${sample_name}/..."
     """
 
 }
 
 //----------------------------------------------------------------------------//
-// perturb_sc subworkflow
+// sc_pp subworkflow
 //----------------------------------------------------------------------------//
 
-workflow perturb_sc {
+workflow sc {
     
     take:
-        ch_input   
+        ch_input
 
     main:
 
-        // Prep reads
+        // Prep all reads, independently
         MERGE_R1(ch_input)
         MERGE_R2(ch_input)
         EXTRACT_R2(MERGE_R2.out.R2)
@@ -122,49 +120,49 @@ workflow perturb_sc {
         ALIGN_33_R2(EXTRACT_R2.out.first_33, BOWTIE_INDEX_GBC_PATTERN.out.index)
         GET_READS_NAMES(MERGE_R1.out.R1)
         GET_NAMES_ALIGNED(ALIGN_33_R2.out.R2_aligned)
-        GET_NAMES_NOT_ALIGNED(GET_READS_NAMES.out.names, GET_NAMES_ALIGNED.out.names)
-        PREP_GBC(MERGE_R1.out.R1, MERGE_R2.out.R2, GET_NAMES_ALIGNED.out.names) // Control
-        PREP_TRANSCRIPT(MERGE_R1.out.R1, MERGE_R2.out.R2, GET_NAMES_NOT_ALIGNED.out.names) // Control
+
+        // Get (for each sample) raw fastqs, read and aligned read names. Separate fastqs
+        GET_NAMES_NOT_ALIGNED(GET_READS_NAMES.out.names.combine(GET_NAMES_ALIGNED.out.names, by:0))
+        PREP_GBC(MERGE_R1.out.R1.combine(MERGE_R2.out.R2, by:0).combine(GET_NAMES_ALIGNED.out.names, by:0))
+        PREP_TRANSCRIPT(MERGE_R1.out.R1.combine(MERGE_R2.out.R2, by:0).combine(GET_NAMES_NOT_ALIGNED.out.names, by:0))
         
         // STARSolo
-        SOLO(PREP_TRANSCRIPT.out.R1, PREP_TRANSCRIPT.out.R2)
+        SOLO(PREP_TRANSCRIPT.out.reads)
 
         // Assign cells to clones
-        GET_GBC_ELEMENTS(PREP_GBC.out.R1, PREP_GBC.out.R2, SOLO.out.filtered)
         FASTA_FROM_REF(ch_input)
         BOWTIE_INDEX_REF(FASTA_FROM_REF.out.fasta)
-        GBC_TO_FASTA(GET_GBC_ELEMENTS.out.GBCs)
-        ALIGN_GBC(BOWTIE_INDEX_REF.out.index, GBC_TO_FASTA.out.fasta)
-        CELL_ASSIGNMENT(GET_GBC_ELEMENTS.out.CBCs, GET_GBC_ELEMENTS.out.UMIs, GET_GBC_ELEMENTS.out.GBCs, ALIGN_GBC.out.names)
+        GET_GBC_ELEMENTS(PREP_GBC.out.reads.combine(SOLO.out.filtered, by:0))
+        GBC_TO_FASTA(GET_GBC_ELEMENTS.out.elements.map{ it -> tuple(it[0], it[3]) })
+        ALIGN_GBC(BOWTIE_INDEX_REF.out.index.combine(GBC_TO_FASTA.out.fasta, by:0))
+        CELL_ASSIGNMENT(GET_GBC_ELEMENTS.out.elements.combine(ALIGN_GBC.out.names, by:0))
 
-        // Summary and cleanup
-        generate_run_summary_sc(
-            ch_input,
-            GET_READS_NAMES.out.names,
-            GET_NAMES_NOT_ALIGNED.out.names,
-            GET_NAMES_ALIGNED.out.names,
-            GET_GBC_ELEMENTS.out.GBCs,
-            SOLO.out.filtered
-        )
-        publish_sc(
-            ch_input,
-            CELL_ASSIGNMENT.out.CBC_GBC_combos,
-            CELL_ASSIGNMENT.out.plot,
-            CELL_ASSIGNMENT.out.cells_summary,
-            CELL_ASSIGNMENT.out.clones_summary,
-            SOLO.out.bam,
-            SOLO.out.stats,
-            SOLO.out.summary,
-            SOLO.out.filtered,
-            SOLO.out.raw,
-            generate_run_summary_sc.out.run_summary
-        )
+        // Summary
+        summary_input = GET_READS_NAMES.out.names
+            .combine(GET_NAMES_NOT_ALIGNED.out.names, by:0)
+            .combine(GET_NAMES_ALIGNED.out.names, by:0)
+            .combine(GET_GBC_ELEMENTS.out.elements.map{ it -> tuple(it[0], it[3]) }, by:0)
+            .combine(SOLO.out.filtered, by:0)
+        generate_run_summary_sc(summary_input)
+
+        // Publishing
+        publish_input = CELL_ASSIGNMENT.out.CBC_GBC_combos
+            .combine(CELL_ASSIGNMENT.out.plot, by:0)
+            .combine(CELL_ASSIGNMENT.out.cells_summary, by:0)
+            .combine(CELL_ASSIGNMENT.out.clones_summary, by:0)
+            .combine(SOLO.out.bam, by:0)
+            .combine(SOLO.out.stats, by:0)
+            .combine(SOLO.out.summary, by:0)
+            .combine(SOLO.out.filtered, by:0)
+            .combine(SOLO.out.raw, by:0)
+            .combine(generate_run_summary_sc.out.run_summary, by:0)
+        publish_sc(publish_input)
 
     emit:
-        summary = generate_run_summary_sc.out.run_summary
         filtered = SOLO.out.filtered
         bam = SOLO.out.bam
+        
 
 }
 
-//----------------------------------------------------------------------------// 
+//----------------------------------------------------------------------------//

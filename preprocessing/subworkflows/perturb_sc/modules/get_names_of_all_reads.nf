@@ -6,11 +6,13 @@ nextflow.enable.dsl = 2
 
 process GET_READS_NAMES {
 
+  tag "${sample_name}"
+  
   input:
-  path R1_raw
+  tuple val(sample_name), path(R1_raw)
 
   output:
-  path "all_reads.txt", emit: names
+  tuple val(sample_name), path("all_reads.txt"), emit: names
 
   script:
   """
@@ -25,6 +27,7 @@ process GET_READS_NAMES {
 
   stub:
   """
+  echo ${sample_name} > sample
   touch all_reads.txt
   """
 

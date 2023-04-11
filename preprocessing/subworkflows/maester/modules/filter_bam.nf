@@ -6,11 +6,13 @@ nextflow.enable.dsl = 2
 
 process FILTER_I {
 
+  tag "${sample_name}"
+
   input:
-  path bam
+  tuple val(sample_name), path(bam)
 
   output:
-  path "mitobam_I.bam", emit: mitobam
+  tuple val(sample_name), path("mitobam_I.bam"), emit: mitobam
 
   script:
   """
@@ -29,11 +31,13 @@ process FILTER_I {
 
 process FILTER_II {
 
+  tag "${sample_name}"
+
   input:
-  path bam
+  tuple val(sample_name), path(bam)
 
   output:
-  path "mitobam_II.bam", emit: mitobam
+  tuple val(sample_name), path("mitobam_II.bam"), emit: mitobam
 
   script:
   """

@@ -6,12 +6,13 @@ nextflow.enable.dsl = 2
 
 process MERGE {
 
+  tag "${sample_name}"
+
   input:
-  path bam_1
-  path bam_2
+  tuple val(sample_name), path(bam_1), path(bam_2)
 
   output:
-  path "merged_mitobam.bam", emit: mitobam
+  tuple val(sample_name), path("merged_mitobam.bam"), emit: mitobam
 
   script:
   """

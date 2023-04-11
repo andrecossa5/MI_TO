@@ -7,11 +7,10 @@ nextflow.enable.dsl = 2
 process GET_NAMES_NOT_ALIGNED {
 
   input:
-  path all_reads
-  path reads_aligned
+  tuple val(sample_name), path(all_reads), path(reads_aligned)
 
   output:
-  path "reads_transcriptomic.txt", emit: names
+  tuple val(sample_name), path("reads_transcriptomic.txt"), emit: names
 
   script:
   """
@@ -23,6 +22,7 @@ process GET_NAMES_NOT_ALIGNED {
 
   stub:
   """
+  echo ${sample_name} > sample
   touch reads_transcriptomic.txt
   """
 

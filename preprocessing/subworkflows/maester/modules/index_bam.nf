@@ -6,12 +6,14 @@ nextflow.enable.dsl = 2
 
 process INDEX {
 
+  tag "${sample_name}"
+  
   input:
-  path bam
+  tuple val(sample_name), path(bam)
 
   output:
-  path "${bam}", emit: bam
-  path "${bam}.bai", emit: index
+  tuple val(sample_name), path("${bam}"), emit: bam
+  tuple val(sample_name), path("${bam}.bai"), emit: index
 
   script:
   """

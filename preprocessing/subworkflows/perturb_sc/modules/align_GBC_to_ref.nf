@@ -6,12 +6,13 @@ nextflow.enable.dsl = 2
 
 process ALIGN_GBC {
 
+  tag "${sample_name}"
+
   input:
-  path custom_ref_genome
-  path GBC_to_align_fa
+  tuple val(sample_name), path(custom_ref_genome), path(GBC_to_align_fa)
 
   output:
-  path "reads_aligned_to_in_vitro_ref.tsv", emit: names
+  tuple val(sample_name), path("reads_aligned_to_in_vitro_ref.tsv"), emit: names
 
   script:
   """
@@ -44,6 +45,7 @@ process ALIGN_GBC {
 
   stub:
   """
+  echo ${sample_name} > sample
   touch reads_aligned_to_in_vitro_ref.tsv
   """
 

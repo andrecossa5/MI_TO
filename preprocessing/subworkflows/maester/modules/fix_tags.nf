@@ -6,11 +6,13 @@ nextflow.enable.dsl = 2
 
 process FIX_TAGS {
 
+  tag "${sample_name}"
+
   input:
-  path mitobam_no_UB_CB
+  tuple val(sample_name), path(mitobam_no_UB_CB)
 
   output:
-  path "mitobam_fixed.bam", emit: mitobam
+  tuple val(sample_name), path("mitobam_fixed.bam"), emit: mitobam
 
   script:
   """

@@ -13,12 +13,12 @@ process publish_tenx {
     publishDir "${params.tenx_outdir}/${sample}/", mode: 'copy'
 
     input:
-    tuple val(sample), val(in_folder)
-    path raw
-    path filtered
-    path stats
-    path summary
-    path bam
+    tuple val(sample_name)
+          path (raw),
+          path (filtered),
+          path (stats), 
+          path (summary),
+          path (bam)
 
     output:
     path raw
@@ -49,15 +49,14 @@ workflow tenx {
     main:
         MERGE_R1(ch_input)
         MERGE_R2(ch_input)
-        SOLO(MERGE_R1.out.R1, MERGE_R2.out.R2)
-        publish_tenx(
-            ch_input,
-            SOLO.out.raw,
-            SOLO.out.filtered,
-            SOLO.out.stats,
-            SOLO.out.summary,
-            SOLO.out.bam
-        )
+        SOLO(MERGE_R1.out.R1.combine(MERGE_R2.out.R2, by:0))
+        // Publish
+        publish_input = SOLO.out.raw
+            .combine(SOLO.out.filtered, by:0)
+            .combine(SOLO.out.stats, by:0)
+            .combine(SOLO.out.summary, by:0)
+            .combine(SOLO.out.bam, by:0)
+        publish_tenx(publish_input)
 
     emit:
         filtered = SOLO.out.filtered

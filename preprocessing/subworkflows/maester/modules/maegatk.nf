@@ -6,13 +6,13 @@ nextflow.enable.dsl = 2
 
 process MAEGATK {
 
+  tag "${sample_name}"
+
   input:
-  path mitobam
-  path index
-  path filtered
+  tuple val(sample_name), path(mitobam), path(index), path(filtered)
 
   output:
-  path "final", emit: output
+  tuple val(sample_name), path("final"), emit: output
  
   script:
   """

@@ -6,11 +6,13 @@ nextflow.enable.dsl = 2
 
 process TO_H5AD {
 
+  tag "${sample_name}"
+
   input:
-  path output
+  tuple val(sample_name), path(output)
 
   output:
-  path "AFM.h5ad", emit: afm
+  tuple val(sample_name), path("AFM.h5ad"), emit: afm
 
   script:
   """

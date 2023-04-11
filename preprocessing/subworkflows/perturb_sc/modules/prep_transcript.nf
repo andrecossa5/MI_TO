@@ -6,14 +6,13 @@ nextflow.enable.dsl = 2
 
 process PREP_TRANSCRIPT {
 
+  tag "${sample_name}"
+
   input:
-  file R1_raw
-  file R2_raw
-  file reads_transcriptomic
+  tuple val(sample_name), path(R1_raw), path(R2_raw), path(reads_transcriptomic)
 
   output:
-  path "transcriptomic_R1.fq.gz", emit: R1
-  path "transcriptomic_R2.fq.gz", emit: R2
+  tuple val(sample_name), path("transcriptomic_R1.fq.gz"), path("transcriptomic_R2.fq.gz"), emit: reads
 
   script:
   """
@@ -32,6 +31,7 @@ process PREP_TRANSCRIPT {
 
   stub:
   """
+  echo ${sample_name} > sample
   touch transcriptomic_R1.fq.gz
   touch transcriptomic_R2.fq.gz
   """

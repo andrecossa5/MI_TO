@@ -6,11 +6,13 @@ nextflow.enable.dsl = 2
 
 process MERGE_R2 {
 
+  tag "${sample_name}"
+
   input:
-  tuple val(sample), val(in_folder)
+  tuple val(sample_name), val(in_folder)
 
   output:
-  path "R2_raw.fastq.gz", emit: R2
+  tuple val(sample_name), path("R2_raw.fastq.gz"), emit: R2
 
   script:
   """

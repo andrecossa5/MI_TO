@@ -6,14 +6,13 @@ nextflow.enable.dsl = 2
 
 process PREP_GBC {
 
+  tag "${sample_name}"
+
   input:
-  path R1_raw
-  path R2_raw
-  path reads_aligned
+  tuple val(sample_name), path(R1_raw), path(R2_raw), path(reads_aligned)
 
   output:
-  path "aligned_R1.fq.gz", emit: R1
-  path "aligned_R2.fq.gz", emit: R2
+  tuple val(sample_name), path("aligned_R1.fq.gz"), path("aligned_R2.fq.gz"), emit: reads
 
   script:
   """
@@ -32,6 +31,7 @@ process PREP_GBC {
 
   stub:
   """
+  echo ${sample_name} > sample
   touch aligned_R1.fq.gz
   touch aligned_R2.fq.gz
   """

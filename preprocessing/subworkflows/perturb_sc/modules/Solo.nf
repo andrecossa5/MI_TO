@@ -6,16 +6,17 @@ nextflow.enable.dsl = 2
 
 process SOLO {
 
+  tag "${sample_name}"
+
   input:
-  path transcript_R1
-  path transcript_R2
+  tuple val(sample_name), path(transcript_R1), path(transcript_R2)
 
   output:
-  path 'raw', emit: raw 
-  path 'filtered', emit: filtered 
-  path 'Features.stats', emit: stats 
-  path 'Summary.csv', emit: summary 
-  path 'Aligned.sortedByCoord.out.bam', emit: bam 
+  tuple val(sample_name), path('raw'), emit: raw 
+  tuple val(sample_name), path('filtered'), emit: filtered 
+  tuple val(sample_name), path('Features.stats'), emit: stats 
+  tuple val(sample_name), path('Summary.csv'), emit: summary 
+  tuple val(sample_name), path('Aligned.sortedByCoord.out.bam'), emit: bam 
 
   script:
   """
@@ -45,6 +46,7 @@ process SOLO {
 
   stub:
   """
+  echo ${sample_name} > sample
   touch raw
   touch filtered
   touch Features.stats 

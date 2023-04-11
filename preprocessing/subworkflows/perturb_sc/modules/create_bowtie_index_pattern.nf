@@ -7,14 +7,14 @@ nextflow.enable.dsl = 2
 process BOWTIE_INDEX_GBC_PATTERN {
 
   output:
-  path "GBC_pattern", emit: index
+  path("GBC_pattern"), emit: index
 
   script:
   """
   mkdir -p GBC_pattern
 
   echo ">construct" > GBC_pattern.fa
-  echo "${params.perturb_sc_pattern}" >> GBC_pattern.fa
+  echo "${params.sc_pattern}" >> GBC_pattern.fa
 
   bowtie2-build \
   -f GBC_pattern.fa \

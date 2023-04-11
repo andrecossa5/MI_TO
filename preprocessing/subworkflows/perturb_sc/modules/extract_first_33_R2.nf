@@ -6,11 +6,13 @@ nextflow.enable.dsl = 2
 
 process EXTRACT_R2 {
 
+  tag "${sample_name}"
+
   input:
-  path R2_raw
+  tuple val(sample_name), path(R2_raw)
 
   output:
-  path "R2_first_33_nt.fa.gz", emit: first_33
+  tuple val(sample_name), path("R2_first_33_nt.fa.gz"), emit: first_33
 
   script:
   """

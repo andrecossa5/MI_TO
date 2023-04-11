@@ -6,12 +6,13 @@ nextflow.enable.dsl = 2
 
 process ASSEMBLE_FQ {
 
+  tag "${sample_name}"
+
   input:
-  path R1
-  path R2
+  tuple val(sample_name), path(R1), path(R2)
 
   output:
-  path "assembled.fastq.gz", emit: fq
+  tuple val(sample_name), path("assembled.fastq.gz"), emit: fq
 
   script:
   """

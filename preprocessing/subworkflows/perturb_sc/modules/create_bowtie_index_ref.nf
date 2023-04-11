@@ -6,11 +6,13 @@ nextflow.enable.dsl = 2
 
 process BOWTIE_INDEX_REF {
 
+  tag "${sample_name}"
+
   input:
-  path GBC_reference_fa
+  tuple val(sample_name), path(GBC_reference_fa)
 
   output:
-  path "custom_ref_genome", emit: index
+  tuple val(sample_name), path("custom_ref_genome"), emit: index
 
   script:
   """
@@ -23,6 +25,7 @@ process BOWTIE_INDEX_REF {
 
   stub:
   """
+  echo ${sample_name} > sample
   touch custom_ref_genome
   """
 
