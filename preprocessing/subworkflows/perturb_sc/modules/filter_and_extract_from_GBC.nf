@@ -17,7 +17,7 @@ process GET_GBC_ELEMENTS {
 
   script:
   """
-  python ${baseDir}/bin/sc_pp/filter_and_extact_from_GBC_reads.py ${R1} ${R2} ${filtered}
+  python ${baseDir}/bin/filter_and_extact_from_GBC_reads.py ${R1} ${R2} ${filtered}
   """
 
   stub:
