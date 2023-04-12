@@ -16,12 +16,13 @@ process STAR {
 
   script:
   """
-  /STAR-2.7.9a/source/STAR \
+  STAR \
     --runThreadN ${task.cpus} \
     --genomeDir ${params.ref} \
     --readFilesIn ${fastq} \
     --readFilesCommand zcat \
     --outSAMtype BAM SortedByCoordinate \
+    --limitBAMsortRAM 50000000 \
     --outSAMattributes NH HI nM AS
   """
 
