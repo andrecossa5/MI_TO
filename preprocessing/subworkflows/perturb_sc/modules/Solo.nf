@@ -27,7 +27,7 @@ process SOLO {
     --readFilesCommand zcat \
     --outTmpDir tmp \
     --outSAMtype BAM SortedByCoordinate \
-    --limitBAMsortRAM 50000000 \
+    --limitBAMsortRAM 50000000000 \
     --outSAMattributes NH HI nM AS CR UR CB UB \
     --soloType CB_UMI_Simple \
     --soloBarcodeReadLength 28 \
