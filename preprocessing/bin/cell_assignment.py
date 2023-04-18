@@ -31,6 +31,8 @@ df.columns = ['CBC', 'UMI', 'GBC']
 df = df.loc[aligned_names.index,:]
 df.to_csv('CBC_UMI_GBC_by_read.tsv.gz', sep='\t')
 
+# df = pd.read_csv('/Users/IEO5505/Desktop/CBC_UMI_GBC_by_read.tsv.gz', sep='\t')
+
 # Compute unique CBC-GBC combo table
 df_read_counts = df.groupby(['CBC', 'GBC']).size().to_frame('read_counts')
 df_umi_counts = df.reset_index().loc[:, ['CBC', 'GBC', 'UMI']].drop_duplicates().groupby(['CBC', 'GBC']).size().to_frame('umi_counts')
@@ -39,13 +41,18 @@ df_combos['coverage'] = df_combos['read_counts'] / df_combos['umi_counts']
 df_combos.to_csv('CBC_GBC_combos.tsv.gz', sep='\t')
 
 # Cell classification: from Adamson et al. 2016
+
+# Assigned and not-assigned CBC-GBC combos
 test = (df_combos['read_counts'] > 30) & \
         (df_combos['umi_counts'] > 3) & \
-        (df_combos['coverage'] > 1.5) # TOTUNE
+        (df_combos['coverage'] > 5) # TOTUNE
 df_combos['status'] = np.where(test, 1, 0)
-df_combos_agg = df_combos.reset_index().loc[:, ['CBC', 'GBC', 'status']].groupby(['CBC', 'GBC']).agg({'status': 'sum'})
-unique_combos = df_combos_agg.query('status == 1').index
-unique_combos = [ [k, v] for k, v in zip(unique_combos.get_level_values('CBC'), unique_combos.get_level_values('GBC')) ]
+# Cell MOI tally 
+cell_MOI = df_combos.loc[:, ['CBC', 'GBC', 'status']
+    ].query('status == 1').groupby('CBC').sum(
+    ).rename(columns={'status': 'multiplicity'})
+# Filter uniquely assigned cells and get their unique GBC
+uniquely_assigned_cells = cell_MOI.query('multiplicity == 1').index
 
 # Cell assignment plot
 fig, ax = plt.subplots()
@@ -57,26 +64,15 @@ ax.set(title='CBC-GBC combination status', xlabel='log10_read_counts', ylabel='l
 ax.legend()
 fig.savefig('CBC_GBC_combo_status.png')
 
-
 # Compute summary tables: cells 
-df_cells = pd.merge(
-    pd.DataFrame(unique_combos, columns=['CBC', 'GBC']), 
-    df_combos.drop(columns='status'),
-    on=['CBC', 'GBC']
-).set_index('CBC')
+df_cells = df_combos.query('CBC in @uniquely_assigned_cells and status == 1').drop(
+    columns='status').set_index('CBC')
+# Assert we have taken the correct ones and save
+assert df_cells.index.size == uniquely_assigned_cells.size
 df_cells.to_csv('cells_summary_table.csv')
 
 # Compute summary tables: clones
 df_clones = df_cells.reset_index().groupby('GBC').size().to_frame('n_cells')
 df_clones['prevalence'] = df_clones['n_cells'] / df_clones['n_cells'].sum()
+df_clones = df_clones.sort_values('prevalence', ascending=False)
 df_clones.to_csv('clones_summary_table.csv')
-
-# Plots: correlation with bulk and distribution
-fig, ax = plt.subplots()
-x = np.log10(df_combos['read_counts'])
-y = np.log10(df_combos['umi_counts'])
-ax.plot(x[df_combos['status'] == 1], y[df_combos['status'] == 1], '.', label='assigned', color='blue')
-ax.plot(x[df_combos['status'] == 0], y[df_combos['status'] == 0], '.', label='not-assigned', color='grey')
-ax.set(title='CBC-GBC combination status', xlabel='log10_read_counts', ylabel='log10_umi_counts')
-ax.legend()
-fig.savefig('CBC_GBC_combo_status.png')
